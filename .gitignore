@@ -1,0 +1,10 @@
+/data/
+/runs/
+__pycache__/
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+.idea/
+.venv/
