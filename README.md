@@ -1,5 +1,7 @@
 # Brush GPT
 
+[![CI](https://github.com/alina0607/brush-gpt/actions/workflows/ci.yml/badge.svg)](https://github.com/alina0607/brush-gpt/actions/workflows/ci.yml)
+
 > A transformer that paints cat portraits one brush stroke at a time. It is trained on 6,000+ paintings made by a
 > stroke-fitting "data painter" that turns cat photos into layered digital paintings, and it is conditioned on what
 > the cat should look like (coat colour, pattern, each eye's colour). Built from scratch in PyTorch.
@@ -180,6 +182,26 @@ both downloaded from Hugging Face on first use.
 check the port against that code on real cats: identical strokes, tokens, data files, logits, sampled tokens and
 training steps; the evaluation reproduces the eye-model numbers and the whole-face column at g = 2 exactly. They run when
 `SELL_ANYTHING_ML` points to that code and skip otherwise.
+
+## Development
+
+Python 3.10 or newer, managed with [uv](https://docs.astral.sh/uv/). `uv sync` creates the environment from
+`uv.lock`, including the development tools:
+
+```bash
+uv sync
+uv run ruff format --check .         # formatting
+uv run ruff check .                  # lint
+uv run mypy brushgpt scripts tests   # type check
+uv run pytest                        # tests
+```
+
+`uv run pre-commit install` runs the same checks, except the tests, before every commit (pre-commit needs
+Python 3.11 or newer).
+
+GitHub Actions runs the four checks on every push and pull request
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). On Linux the CPU build of PyTorch is installed, so CI does
+not download the CUDA libraries.
 
 ## References
 

@@ -40,6 +40,16 @@ line-length = 120
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
+# On Linux (including CI) install the CPU build of torch: the default Linux wheel
+# pulls several gigabytes of CUDA libraries that a machine without a GPU never uses.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [dependency-groups]
 dev = [
     "mypy>=2.4.1",
