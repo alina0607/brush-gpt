@@ -386,7 +386,8 @@ def run_tokens(
     if pal is not None:
         at = f == 5
         colour, alpha = np.divmod(t[at] - vocab.offsets["paint"], NALPHA)
-        slot = PALETTE_K + colour if pal.slots[e] is None else pal.slots[e][k]
+        slots = pal.slots[e]
+        slot = PALETTE_K + colour if slots is None else slots[k]
         t[at] = vocab.offsets["paint"] + slot * NALPHA + alpha
     return t, f
 
@@ -544,6 +545,7 @@ def layers_from_tokens(toks: np.ndarray, ranges: Ranges, vocab: Vocabulary) -> l
         if toks[i] < n_specials:
             name = vocab.specials[int(toks[i])]
             if name == "PAL_ALL":
+                assert palette is not None  # PAL_ALL is only in a vocabulary with a palette
                 i = _read_palette(toks[:stop], i + 1, vocab, palette)
                 continue
             _read_marker(name, state)

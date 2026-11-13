@@ -165,6 +165,9 @@ class BrushGPTConfig:
 
 
 class BrushGPT(nn.Module):
+    cos: torch.Tensor  # buffers, registered in __init__
+    sin: torch.Tensor
+
     def __init__(self, cfg: BrushGPTConfig, layout: TokenLayout):
         super().__init__()
         self.cfg, self.layout = cfg, layout
@@ -262,7 +265,7 @@ class BrushGPT(nn.Module):
         grammar = grammar or StrokeGrammar(self.layout)
         b, dev = cond.size(0), cond.device
         guided = uncond is not None and guidance != 1.0
-        rows = torch.cat([cond, uncond]) if guided else cond
+        rows = torch.cat([cond, uncond]) if guided and uncond is not None else cond
         cache = [DecoderLayerCache.empty(max_tokens + 8) for _ in self.decoder]
         memory = self.encode(rows)
         h = self.decode(torch.full((rows.size(0), 1), self.layout.bos, device=dev), memory, 0, cache)[:, -1]

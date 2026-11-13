@@ -24,6 +24,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
@@ -73,7 +74,7 @@ class PaintingData:
         split = [str(s) for s in z["split"]]  # per cat
         self.specials = [str(s) for s in z["specials"]]
         self.vocab = int(z["vocab"])
-        palette_k = tuple(int(v) for v in z["palette_k"]) if "palette_k" in z.files else (0, 0)
+        palette_k = cast(tuple[int, int], tuple(int(v) for v in z["palette_k"])) if "palette_k" in z.files else (0, 0)
         self.layout = layout_from_specials(
             self.specials, [str(f) for f in z["field_names"]], [int(s) for s in z["field_sizes"]], palette_k
         )
@@ -268,6 +269,7 @@ def train(
             for _ in range(cfg.accum):
                 cond, tokens, fields = data.example(sampler.next())
                 if sampler.drop_condition(cfg.cond_drop):
+                    assert model_cfg.null_id is not None  # checked above: condition dropout needs a null token
                     cond = drop_attributes(cond, model_cfg.null_id, data.n_attributes_kept)
                 with amp():
                     loss, _, _ = model.loss(cond, tokens, fields)
@@ -320,6 +322,7 @@ def sample_held(
     time, up to 1.3 times the data's longest painting. Returns (tokens (n, length) padded with -1, data rows)."""
     if guidance != 1.0 and model.cfg.null_id is None:
         raise ValueError("guidance needs a model trained with condition dropout")
+    null_id = model.cfg.null_id
     device = model.embed.weight.device
     items = sorted(data.held, key=lambda i: int(data.cat_id[i]))[:n_cats]
     max_tokens = int(1.3 * data.longest()) + 64
@@ -328,7 +331,9 @@ def sample_held(
     model.eval()
     for k in range(0, len(items), batch):
         cond = torch.stack([data.example(i)[0] for i in items[k : k + batch]])
-        uncond = drop_attributes(cond, model.cfg.null_id, data.n_attributes_kept) if guidance != 1.0 else None
+        uncond = (
+            drop_attributes(cond, null_id, data.n_attributes_kept) if guidance != 1.0 and null_id is not None else None
+        )
         with torch.autocast("cuda", dtype=torch.float16, enabled=cond.is_cuda):
             got = model.sample(cond, max_tokens, temperature, generator, uncond, guidance)
         out += list(got.cpu().numpy())

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -142,7 +143,7 @@ def measure_whole_face(
         name = data.cat(row)
         got = tokens[k][tokens[k] >= 0]
         asked = data.asked(row)
-        rec = {
+        rec: dict[str, Any] = {
             "cat": name,
             "version": data.versions[row],
             "tokens": int(len(got)),
@@ -251,7 +252,7 @@ def measure_eyes_alone(
         p1 = render(with_eyes(painted, eyes)).numpy()
         asked = [SPECIALS[int(samples["prefix"][sides[side]][2])].removeprefix("EYE_") for side in (0, 1)]
         view = views[name]
-        row = {
+        row: dict[str, Any] = {
             "cat": name,
             "asked": asked,
             "names": {"painter": eye_names(view, p0), "eye model": eye_names(view, p1)},
@@ -407,7 +408,9 @@ def crop(canvas: np.ndarray, outlines: list[np.ndarray]) -> Image.Image:
     x1, y1 = p.max(0) + 25
     cx, cy, h = (x0 + x1) / 2, (y0 + y1) / 2, max(x1 - x0, 2.2 * (y1 - y0)) / 2
     img = Image.fromarray((np.clip(canvas, 0, 1) * 255).astype(np.uint8))
-    return img.crop((int(cx - h), int(cy - h / 2.2), int(cx + h), int(cy + h / 2.2))).resize(CROP_SIZE, Image.LANCZOS)
+    return img.crop((int(cx - h), int(cy - h / 2.2), int(cx + h), int(cy + h / 2.2))).resize(
+        CROP_SIZE, Image.Resampling.LANCZOS
+    )
 
 
 def contact_sheet(rows: Pictures, path: str | Path) -> None:

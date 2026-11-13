@@ -211,6 +211,7 @@ def cat_versions(
     versions: list[Version] = [("A", version_layers(source.painting), eye_names(view, view["photo"]) + own)]
     info_file = eye_versions / f"{source.name}.json" if eye_versions is not None else None
     if info_file is not None and info_file.exists():
+        assert eye_versions is not None  # info_file is set only with eye_versions
         info = json.loads(info_file.read_text())["versions"]
         if "A_cpu" in info:  # the original painted with the versions; its eye versions are comparable to it
             if eye_targets is None:
@@ -271,7 +272,8 @@ def build(
     split = {n: split.get(n, "train") for n in names}
     if ranges is None:
         ranges = layer_ranges(c.painting for c in painted if split[c.name] == "train")
-    toks, fields, cond, cat_id, group, vnames = [], [], [], [], [], []
+    toks, fields, cond, cat_id, vnames = [], [], [], [], []
+    group: list[int] = []
     dropped = 0
     for ci, source in enumerate(painted):
         parts = {flip: part_map(face_points(source, flip)) for flip in (False, True)} if vocab.has_parts else None

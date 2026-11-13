@@ -19,7 +19,6 @@ dependencies = [
 
 [project.optional-dependencies]
 plan = ["transformers>=4.40"]      # Segment Anything, for the sketch plan
-dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [tool.setuptools.packages.find]
 include = ["brushgpt*"]
@@ -30,8 +29,21 @@ brushgpt = ["data/*.npy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_configs = true
+
 [tool.ruff]
 line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0 ; python_full_version >= '3.11'",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+]

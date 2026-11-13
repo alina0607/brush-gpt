@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 import torch
@@ -259,7 +260,7 @@ def test_loss_and_gradients_match_the_reference(dropout: float):
     r_loss.backward()
     m_loss.backward()
     ga = convert_reference_state_dict({n: p.grad for n, p in ref.named_parameters()})
-    gb = {n: p.grad for n, p in mine.named_parameters()}
+    gb = cast(dict[str, torch.Tensor], {n: p.grad for n, p in mine.named_parameters()})  # set by backward()
     assert all(torch.equal(ga[k], gb[k]) for k in ga)
 
 
@@ -277,6 +278,7 @@ def test_sampling_matches_the_reference(layout: TokenLayout, guidance: float, te
     ref, mine = reference_model(layout).eval(), tiny(layout).eval()
     cond = torch.stack([COND, COND, COND])
     cond[1, 1] = SP["COND_unclear"]
+    assert mine.cfg.null_id is not None  # tiny() has a null token
     uncond = drop_attributes(cond, mine.cfg.null_id)
     a = ref.sample_free(
         cond,

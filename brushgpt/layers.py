@@ -98,6 +98,7 @@ class SelfAttentionCache:
             self.keys = k.new_zeros(batch, heads, self.size, dim)
             self.values = v.new_zeros(batch, heads, self.size, dim)
         n, t = self.length, k.size(2)
+        assert self.keys is not None and self.values is not None  # allocated above on the first call
         self.keys[:, :, n : n + t] = k
         self.values[:, :, n : n + t] = v
         self.length = n + t
@@ -185,6 +186,7 @@ class CrossAttention(_RotaryAttention):
         """x (B, T, d), memory (B, S, d) -> (B, T, d). cos/sin are x's rotary tables, memory_cos/sin the memory's."""
         q = self._queries(x, cos, sin)
         if cache is not None and cache.keys is not None:
+            assert cache.values is not None  # keys and values are always set together
             k, v = cache.keys, cache.values
         else:
             k, v = self._keys_values(memory, memory_cos, memory_sin)
@@ -279,6 +281,7 @@ class GrowingKVCache:
 
     def extend(self, k: torch.Tensor, v: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         if self.keys is not None:
+            assert self.values is not None  # keys and values are always set together
             k = torch.cat([self.keys, k], dim=2)
             v = torch.cat([self.values, v], dim=2)
         self.keys, self.values = k, v
@@ -349,6 +352,9 @@ def _scale_residual_projections(model: nn.Module, n_layers: int) -> None:
 class GPT(nn.Module):
     """Decoder-only transformer: token embedding, the blocks, a final norm, and an output layer tied to the
     embedding (one table both reads and writes tokens)."""
+
+    rope_cos: torch.Tensor  # buffers, registered in __init__
+    rope_sin: torch.Tensor
 
     def __init__(self, cfg: GPTConfig):
         super().__init__()

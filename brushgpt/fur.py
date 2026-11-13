@@ -16,6 +16,7 @@ doubled-angle unit vectors (cos 2t, sin 2t). The field is computed on the 256 px
 from __future__ import annotations
 
 import math
+from typing import cast
 
 import numpy as np
 import torch
@@ -102,13 +103,15 @@ def anatomy_template(points: np.ndarray, grid: torch.Tensor) -> torch.Tensor:
     v = v - (0.45 * below * lateral)[..., None] * up
     radial = doubled(torch.atan2(v[..., 1], v[..., 0]))
     eye_dir = doubled(torch.atan2(right[1], right[0])).expand_as(radial)
-    w_eye = sum(torch.exp(-((torch.linalg.norm(grid - e, dim=-1) / (0.45 * d)) ** 2)) for e in (p[0], p[1]))
+    w_eye = cast(
+        torch.Tensor, sum(torch.exp(-((torch.linalg.norm(grid - e, dim=-1) / (0.45 * d)) ** 2)) for e in (p[0], p[1]))
+    )
     parts, weights = [radial, eye_dir], [torch.ones_like(w_eye), 2.0 * w_eye]
     for outer, tip, inner in ((p[3], p[4], p[5]), (p[8], p[7], p[6])):
         out = grid - (outer + inner) / 2
         parts.append(doubled(torch.atan2(out[..., 1], out[..., 0])))
         weights.append(6.0 * soft_triangle(grid, outer, tip, inner, soft=4.0))
-    f = sum(w[..., None] * q for w, q in zip(weights, parts, strict=True))
+    f = cast(torch.Tensor, sum(w[..., None] * q for w, q in zip(weights, parts, strict=True)))
     return f / (torch.linalg.norm(f, dim=-1, keepdim=True) + 1e-6)
 
 

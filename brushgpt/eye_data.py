@@ -139,7 +139,7 @@ class EyeGeometry:
 
 def frame_of(outline: np.ndarray) -> Frame:
     c = outline.mean(0)
-    return Frame(c, float(np.linalg.norm(outline - c, axis=1).max()))
+    return Frame(c, float(np.max(np.linalg.norm(outline - c, axis=1))))
 
 
 def plan_eyes(plan: Mapping[str, np.ndarray]) -> list[EyeGeometry] | None:
@@ -465,8 +465,8 @@ def build(
                     log({"cats": len(got), "of": len(painted)})
     else:
         _init_worker(eye_versions, eye_targets)
-        for c in painted:
-            got.append(_one_cat(c))
+        for source in painted:
+            got.append(_one_cat(source))
             if log is not None and len(got) % 200 == 1:
                 log({"cats": len(got), "of": len(painted)})
     left_out = {

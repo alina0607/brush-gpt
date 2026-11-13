@@ -63,7 +63,7 @@ def synthetic_layers(seed: int = 0) -> list:
     ranges = synthetic_ranges()
     fur = rng.integers(0, NRGB**3, 5)
     out = []
-    order = [(k, j, None) for k, j in LAYERS if k < EYE_STAGE]
+    order: list[tuple[int, int, int | None]] = [(k, j, None) for k, j in LAYERS if k < EYE_STAGE]
     order += [(k, j, s) for s in (0, 1) for k, j in LAYERS if k == EYE_STAGE]
     order += [(k, j, None) for k, j in LAYERS if k > EYE_STAGE]
     for k, j, side in order:

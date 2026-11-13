@@ -277,7 +277,13 @@ def eye_outlines(sam: Sam, target: np.ndarray, eyes: np.ndarray, d: float) -> li
         lo = e - side / 2
         zoom = GRID / side
         crop = np.asarray(
-            image.transform((GRID, GRID), Image.EXTENT, (*lo, *(lo + side)), Image.BICUBIC, fillcolor=(255, 255, 255))
+            image.transform(
+                (GRID, GRID),
+                Image.Transform.EXTENT,
+                (*lo, *(lo + side)),
+                Image.Resampling.BICUBIC,
+                fillcolor=(255, 255, 255),
+            )
         )
 
         def to_crop(q: np.ndarray, lo: np.ndarray = lo, zoom: float = zoom) -> np.ndarray:

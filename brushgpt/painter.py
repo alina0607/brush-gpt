@@ -373,6 +373,7 @@ def stroke_params(s: Strokes, st: Stage, cat: dict) -> StrokeParams:
     elif st.photo_colour:
         colour = s.under
     else:
+        assert st.tint is not None  # `under` without photo colour is the tint's paint
         colour = (s.under + st.tint * torch.tanh(s.colour)).clamp(0, 1)
     return StrokeParams(xy, lw, angle, colour, lo + (hi - lo) * torch.sigmoid(s.alpha))
 
@@ -520,7 +521,7 @@ def brow_whiskers(cat: dict) -> tuple[np.ndarray, np.ndarray]:
             length = math.hypot(dx, dy)
             if ok[int(lo[1]), int(lo[0])] and dy < -0.3 * length and dx * out >= -0.2 * length:
                 cands.append((length, lo + 0.5, math.atan2(dy, dx)))
-        kept = []
+        kept: list[tuple[np.ndarray, float]] = []
         for _length, lo, ang in sorted(cands, key=lambda c: -c[0]):
             if all(
                 np.linalg.norm(lo - k[0]) > 8 or abs(math.remainder(ang - k[1], 2 * math.pi)) > math.radians(12)
@@ -658,9 +659,10 @@ def ear_traced(cat: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     height = np.mean([np.linalg.norm(p[t] - 0.5 * (p[a] + p[b])) for a, t, b in ((3, 4, 5), (6, 7, 8))])
     strength, free = np.where(hair, ridge, 0.0), np.ones((SIDE, SIDE), bool)
     mid = 0.5 * (p[0, 0] + p[1, 0])
-    xy, ang, size, up_at = [], [], [], []
+    xy: list[np.ndarray] = []
+    ang, size, up_at = [], [], []
     while len(xy) < TRACE_CAP:
-        k = int(np.where(free, strength, 0).argmax())
+        k = int(np.argmax(np.where(free, strength, 0)))
         if not free.flat[k] or strength.flat[k] <= 0:
             break
         start = np.array([k % SIDE + 0.5, k // SIDE + 0.5])
@@ -827,7 +829,7 @@ def fit_stage(
         f = torch.tensor(sizes / np.array([st.length, st.width]), dtype=torch.float32)
         lo_s, hi_s = st.size_range
         size = logit(((f - lo_s) / (hi_s - lo_s)).clamp(0.02, 0.98))
-    under = None
+    under: torch.Tensor | None = None
     if st.tint is not None:  # the ear's rim: the paint just inside it
         ear_mid = [cat["points"][[5, 4, 3]].mean(0), cat["points"][[6, 7, 8]].mean(0)]
         to_mid = np.array([ear_mid[0] if x < cat["centre"][0] else ear_mid[1] for x in xy.numpy()[:, 0]]) - xy.numpy()
@@ -836,10 +838,10 @@ def fit_stage(
         ux, uy = np.clip(at, 0, SIDE - 1).astype(int).T
         under = torch.from_numpy(soft[uy, ux].astype(np.float32))
     if st.photo_colour:  # coloured as the photo at the place
-        under = photo_colours(st, cat, xy.numpy(), sizes)
+        rgb = photo_colours(st, cat, xy.numpy(), sizes)
         if st.emphasis:  # stronger than the photo, as a painter would
-            under = under * (1 - st.emphasis) if st.photo_colour == "dark" else under + st.emphasis * (1 - under)
-        under = torch.from_numpy(under.astype(np.float32))
+            rgb = rgb * (1 - st.emphasis) if st.photo_colour == "dark" else rgb + st.emphasis * (1 - rgb)
+        under = torch.from_numpy(rgb.astype(np.float32))
     s = Strokes(
         xy=logit(xy / SIDE),
         size=size,
@@ -964,7 +966,8 @@ def paint_apart(
     results = []
     for stage in sorted(STAGES):
         torch.manual_seed(stage)
-        t0, before, layers = time.time(), canvas, []
+        t0, before = time.time(), canvas
+        layers: list[Layer] = []
         if stage == EYE_STAGE:
             canvas = paint_eyes_apart(cat, canvas, layers, device)
         else:
@@ -1000,6 +1003,7 @@ def paint_eye_versions(
             continue
         torch.manual_seed(stage)
         canvas, plain = paint_without_eyes(stage, seen, canvas, plain, after if at_eyes is not None else before, device)
+    assert at_eyes is not None  # EYE_STAGE is one of STAGES
     out = []
     for v in versions:
         torch.manual_seed(EYE_STAGE)
@@ -1078,7 +1082,8 @@ def save_stage(folder: Path, result: StageResult, cat: dict, device: str) -> dic
     """Write stage<k>.npz and append the stage's row to log.jsonl (strokes, seconds, L1 on the head before and after;
     for stage 2, how far replaying it one eye at a time lands from the fitted canvas). Returns the row."""
     arrays = stage_arrays(result, cat["points"])
-    np.savez_compressed(folder / f"stage{result.stage}.npz", **arrays)
+    # mypy checks **arrays against savez_compressed's allow_pickle: bool; the keys are array names
+    np.savez_compressed(folder / f"stage{result.stage}.npz", **arrays)  # type: ignore[arg-type]
     row = {
         "stage": result.stage,
         "layers": [s.name for s in STAGES[result.stage]],

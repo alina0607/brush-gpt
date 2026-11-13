@@ -32,7 +32,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 import numpy as np
 import torch
@@ -108,7 +108,7 @@ def stroke_seeds(p: StrokeParams, side: int = SIDE) -> torch.Tensor:
 def hash01(*keys: torch.Tensor) -> torch.Tensor:
     """A value in [0, 1) from integer-valued tensors: the keys mixed in 64-bit integers and finished with murmur3's
     32-bit mix. Integer arithmetic only, so every device gives exactly the same value."""
-    k = sum(t.round().long() * c for t, c in zip(keys, HASH_KEYS, strict=False)) & 0xFFFFFFFF
+    k = cast(torch.Tensor, sum(t.round().long() * c for t, c in zip(keys, HASH_KEYS, strict=False))) & 0xFFFFFFFF
     k = k ^ (k >> 16)
     k = (k * 0x85EBCA6B) & 0xFFFFFFFF
     k = k ^ (k >> 13)
@@ -211,14 +211,14 @@ def whisker(p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor) -> torch.Te
     lo, hi = WHISKER_DROOP
     droop = lo + (hi - lo) * hash01(seed, torch.full_like(seed, 41.0))
     down = torch.where(p.angle.cos() >= 0, 1.0, -1.0)  # +v is down when the stroke points right
-    out = 0
+    out: torch.Tensor | float = 0
     for dx, dy in SUBPIXELS:
         u, v, h, w, _ = frame(p, grid + torch.tensor([dx, dy], device=grid.device))
         f = ((u + h) / (2 * h)).clamp(0, 1)
         centre = (droop * down)[:, None, None] * 2 * h * f**2
         half = w * root(1 - f, 0.8)
         out = out + torch.sigmoid((h - u.abs()) / 0.5) * torch.sigmoid((half - (v - centre).abs()) / 0.35)
-    return out / 4
+    return cast(torch.Tensor, out) / 4  # a tensor after the first of the four samples
 
 
 def rake(p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor) -> torch.Tensor:
@@ -226,7 +226,7 @@ def rake(p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor) -> torch.Tenso
     RAKE_FAN of the width at the tip and bending together (RAKE_BEND, plus a little of their own) so they run
     alongside without crossing; each fine at its end and fading out over its last RAKE_FADE. The hairs build up as
     paint does, 1 - prod(1 - hair)."""
-    out = 0
+    out: torch.Tensor | float = 0
     sd = seed[:, None, None]
     for dx, dy in SUBPIXELS:
         u, v, h, w, s = frame(p, grid + torch.tensor([dx, dy], device=grid.device))
@@ -251,27 +251,27 @@ def rake(p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor) -> torch.Tenso
             )
             keep = keep * (1 - hair)
         out = out + (1 - keep) * torch.sigmoid((h - u.abs()) / 0.5)  # nothing past the stroke's ends
-    return out / 4
+    return cast(torch.Tensor, out) / 4  # a tensor after the first of the four samples
 
 
 def liner(p: StrokeParams, grid: torch.Tensor) -> torch.Tensor:
     """The liner's coverage (n, H, W): constant width, round ends."""
-    out = 0
+    out: torch.Tensor | float = 0
     for dx, dy in SUBPIXELS:
         u, v, h, w, _ = frame(p, grid + torch.tensor([dx, dy], device=grid.device))
         run = (u.abs() - (h - w).clamp(min=0)).clamp(min=0)  # 0 along the middle, round past the ends
         out = out + torch.sigmoid((w - torch.sqrt(run**2 + v**2 + 1e-8)) / 0.35)
-    return out / 4
+    return cast(torch.Tensor, out) / 4  # a tensor after the first of the four samples
 
 
 def dot(p: StrokeParams, grid: torch.Tensor) -> torch.Tensor:
     """The dot's coverage (n, H, W): an ellipse of the stroke's length and width with a soft rim."""
-    out = 0
+    out: torch.Tensor | float = 0
     for dx, dy in SUBPIXELS:
         u, v, h, w, _ = frame(p, grid + torch.tensor([dx, dy], device=grid.device))
         r = torch.sqrt((u / h) ** 2 + (v / w) ** 2 + 1e-8)
         out = out + torch.sigmoid((1 - r) * torch.minimum(h, w) / DOT_EDGE)
-    return out / 4
+    return cast(torch.Tensor, out) / 4  # a tensor after the first of the four samples
 
 
 def coverage(
@@ -351,6 +351,7 @@ def lay(canvas: torch.Tensor, start: torch.Tensor, p: StrokeParams, seed: torch.
     if brush.kind == "drag":
         col = drag_source(start, p, seed, grid).reshape(n, m, 3)
     elif brush.kind == "wet":
+        assert shade is not None  # the wet brush always returns its shade
         col = ((1 - brush.pickup) * p.colour[:, None, :] + brush.pickup * under) * shade.reshape(n, m, 1)
     else:
         col = p.colour[:, None, :].expand(n, m, 3)

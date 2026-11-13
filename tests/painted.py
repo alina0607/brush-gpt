@@ -34,14 +34,14 @@ def write_painting(folder: Path, seed: int = 0) -> None:
         arrays = {"canvas": np.ones((512, 512, 3), np.float32)}
         for j in range(len(layers)):
             if k == EYE_STAGE:
-                p = [strokes(rng, 3, (150, 230)), strokes(rng, 2, (290, 370))]
-                p = StrokeParams(*(torch.cat(f) for f in zip(*p, strict=True)))
+                sides = [strokes(rng, 3, (150, 230)), strokes(rng, 2, (290, 370))]
+                p = StrokeParams(*(torch.cat(f) for f in zip(*sides, strict=True)))
                 arrays[f"{j}_side"] = np.array([0, 0, 0, 1, 1], np.int8)
             else:
                 p = strokes(rng, 4)
             for f, v in zip(p._fields, p, strict=True):
                 arrays[f"{j}_{f}"] = v.numpy()
-        np.savez(folder / f"stage{k}.npz", **arrays)
+        np.savez(folder / f"stage{k}.npz", **arrays)  # type: ignore[arg-type]  # keys are array names, not allow_pickle
 
 
 def synthetic_cat(root: Path, name: str, seed: int) -> CatSource:
@@ -58,7 +58,7 @@ def synthetic_cat(root: Path, name: str, seed: int) -> CatSource:
     inputs.photo.save(root / f"{name}.png")
     head = np.c_[np.linspace(40, 220, 12), np.full(12, 60.0), (np.arange(12) < 3).astype(float)]
     plan = {**inputs.plan, "yaw": 10.0, "pitch": 0.0, "roll": -4.0, "head": np.array([head, head[:5]], object)}
-    np.savez(root / f"{name}_plan.npz", **plan)
+    np.savez(root / f"{name}_plan.npz", **plan)  # type: ignore[arg-type]  # keys are array names, not allow_pickle
     write_painting(root / "paintings" / name, seed)
     return CatSource(
         name, root / f"{name}_cutout.npz", root / f"{name}.png", root / f"{name}_plan.npz", root / "paintings" / name

@@ -150,8 +150,8 @@ inside the whole system.
 ## Quick start
 
 ```bash
-pip install -e ".[dev]"            # add ".[plan]" for the sketch plan (Segment Anything via transformers)
-pytest                             # unit tests; the equivalence tests skip without the original code
+uv sync                            # add "--extra plan" for the sketch plan (Segment Anything via transformers)
+uv run pytest                      # unit tests; the equivalence tests skip without the original code
 ```
 
 The pipeline, one script per step (each has `--help`). `cats.csv` lists each cat's name and its input files.

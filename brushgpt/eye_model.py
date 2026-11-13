@@ -84,6 +84,7 @@ class EyeData:
         n = int(self.lengths[ix].max())
         t = torch.from_numpy(self.tokens[ix, :n].copy())
         if cond_drop:
+            assert gen is not None  # condition dropout draws from gen
             drop = torch.from_numpy(gen.random(len(ix)) < cond_drop)
             t[drop, COLOUR_AT] = self.sp["NULL"]
         pos = torch.arange(n - 1)[None]
@@ -352,7 +353,7 @@ def generate(
     b = prefix.size(0)
     guided = null_prefix is not None and guidance != 1.0
     cache = model.empty_cache()
-    logits, _ = model(torch.cat([prefix, null_prefix]) if guided else prefix, cache=cache)
+    logits, _ = model(torch.cat([prefix, null_prefix]) if guided and null_prefix is not None else prefix, cache=cache)
     pos = prefix.size(1)
     state = torch.full((b,), EyeGrammar.START, dtype=torch.long, device=prefix.device)
     layer = torch.full((b,), -1, dtype=torch.long, device=prefix.device)

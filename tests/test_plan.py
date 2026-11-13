@@ -78,7 +78,7 @@ def test_shipped_template_is_in_the_face_frame():
     assert t[2, [3, 4, 5, 6, 7, 8]].mean() > t[2, 2]  # the ears behind the mouth
 
 
-def random_views(template: np.ndarray, n: int, seed: int = 0) -> tuple[np.ndarray, list]:
+def random_views(template: np.ndarray, n: int, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
     rng = np.random.default_rng(seed)
     angles = rng.uniform(-30, 30, (n, 3))  # roll, pitch, yaw
     views = []

@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
@@ -86,7 +87,7 @@ def load_inputs(cutout: Path | str, photo: Path | str, plan: Path | str) -> CatI
         target=z["target"],
         tri=z["tri"],
         points=z["points"],
-        box=tuple(int(v) for v in z["box"]),
+        box=cast(tuple[int, int, int, int], tuple(int(v) for v in z["box"])),
         photo=Image.open(photo).convert("RGB"),
         plan={k: p[k] for k in ("eyes", "pupils", "nose", "mouth")},
     )
@@ -218,7 +219,7 @@ def head_line(c: CatInputs) -> dict:
 
 
 def _upsample_mask(m: np.ndarray, side: int) -> np.ndarray:
-    return np.asarray(Image.fromarray(m.astype(np.uint8) * 255).resize((side, side), Image.BILINEAR)) > 127
+    return np.asarray(Image.fromarray(m.astype(np.uint8) * 255).resize((side, side), Image.Resampling.BILINEAR)) > 127
 
 
 def head_tri(r: dict, side: int) -> np.ndarray:
@@ -239,7 +240,7 @@ def photo_crop(c: CatInputs, side: int) -> np.ndarray:
     box = c.box
     sheet = Image.new("RGB", (box[2] - box[0], box[3] - box[1]), (255, 255, 255))
     sheet.paste(c.photo, (-box[0], -box[1]))
-    return np.asarray(sheet.resize((side, side), Image.LANCZOS), np.float32) / 255
+    return np.asarray(sheet.resize((side, side), Image.Resampling.LANCZOS), np.float32) / 255
 
 
 def disk(radius: float) -> np.ndarray:
@@ -438,7 +439,9 @@ def without_eyes(cat: dict, c: CatInputs) -> dict:
     t256 = c.target.astype(np.float32) / 255
 
     def shrink(m: np.ndarray) -> np.ndarray:
-        return np.asarray(Image.fromarray(m.astype(np.uint8) * 255).resize((INPUT_SIDE, INPUT_SIDE), Image.BOX))
+        return np.asarray(
+            Image.fromarray(m.astype(np.uint8) * 255).resize((INPUT_SIDE, INPUT_SIDE), Image.Resampling.BOX)
+        )
 
     zone256, src256 = shrink(zone) > 0, shrink(source) == 255
     field = fur_field_at(torch.from_numpy(fill_eyes(t256, zone256, src256)), c.points, SIDE)

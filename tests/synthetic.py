@@ -31,7 +31,7 @@ def synthetic_inputs(eye_colour: tuple[float, float, float] = (0.35, 0.6, 0.25))
     grain = 0.08 * np.sin(xx / 3.0 + yy / 7.0)[..., None] + 0.03 * rng.standard_normal((side, side, 1))
     fur = np.array([0.55, 0.42, 0.30]) + grain
     img = np.where(head[..., None], fur, 1.0)
-    eyes = [ellipse(*POINTS[e], *EYE_RADII) for e in (0, 1)]
+    eyes = [ellipse(POINTS[e][0], POINTS[e][1], *EYE_RADII) for e in (0, 1)]
     for e in (0, 1):
         cx, cy = POINTS[e]
         iris = ((xx - cx) / (0.75 * EYE_RADII[0])) ** 2 + ((yy - cy) / (0.75 * EYE_RADII[1])) ** 2 <= 1

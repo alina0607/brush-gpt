@@ -4,6 +4,7 @@ import runpy
 import sys
 import zlib
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -32,7 +33,7 @@ from brushgpt.eye_model import (
 from brushgpt.layers import GPT
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-TINY = {"d_model": 32, "n_layers": 2, "n_heads": 4, "dropout": 0.0}
+TINY: dict[str, Any] = {"d_model": 32, "n_layers": 2, "n_heads": 4, "dropout": 0.0}
 
 
 @pytest.fixture(scope="module")

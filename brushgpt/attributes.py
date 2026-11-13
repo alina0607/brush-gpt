@@ -258,9 +258,10 @@ class CoatReader:
 
         x = np.stack(
             [
-                ((np.asarray(to_uint8(a).resize((224, 224), Image.BICUBIC)) / 255.0 - CLIP_MEAN) / CLIP_STD).transpose(
-                    2, 0, 1
-                )
+                (
+                    (np.asarray(to_uint8(a).resize((224, 224), Image.Resampling.BICUBIC)) / 255.0 - CLIP_MEAN)
+                    / CLIP_STD
+                ).transpose(2, 0, 1)
                 for a in images
             ]
         )
