@@ -38,37 +38,37 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-SIDE = 512                   # the painter's canvas, pixels
+SIDE = 512  # the painter's canvas, pixels
 KINDS = ("wet", "drag", "stick", "pencil", "whisker", "rake", "liner", "dot")
 
-TOKEN_XY_BINS, TOKEN_ANGLE_BINS = 256, 32   # the token grid a stroke's seed is taken from
-BRISTLE_PX = 1.5             # one bristle lane per this many px of width
-GRAIN_PX = 3.0               # the paper's grain: cells of the coarser octave
-PICKUP = 0.25                # wet: share of the colour under the brush mixed into its paint
-HEAD = 0.30                  # wet, drag: the bristles touch down within this share of the length
-SIDE_WAVER = 0.18            # wet, drag: how far a side may come in (share of the half width)
-STICK_EDGE = 1.15            # stick: the soft edge reaches 0 at this many half-sizes from the centre
-SIDE_STEP = 18.0             # px between the wavering side's samples along the stroke
-FRAY = 0.35                  # wet, drag: the outer share of the half width where bristles drop out one by one
-RAKE_HAIRS, RAKE_HAIR_PX, RAKE_FAN = 6, 0.6, 0.15   # rake: hairs a stroke, a hair's width at its root (px), how far
-                                                  # the hairs fan out at the tip (share of the stroke's width)
-RAKE_BEND, RAKE_BEND_OWN = 0.12, 0.02             # rake: the hairs' common bend and each hair's own (share of length)
-RAKE_START, RAKE_END, RAKE_FADE = 0.05, 0.85, 0.45   # rake: a hair starts within the first 5%, ends past 85% of the
-                                                  # length, and fades out over its last 45%
-DOT_EDGE = 0.5               # dot: px over which its rim fades
-WHISKER_DROOP = (0.06, 0.16) # whisker: how far its tip hangs below the straight line, a share of its length
-SUBPIXELS = ((-0.25, -0.25), (0.25, -0.25), (-0.25, 0.25), (0.25, 0.25))   # 2x2 samples a pixel for fine brushes
+TOKEN_XY_BINS, TOKEN_ANGLE_BINS = 256, 32  # the token grid a stroke's seed is taken from
+BRISTLE_PX = 1.5  # one bristle lane per this many px of width
+GRAIN_PX = 3.0  # the paper's grain: cells of the coarser octave
+PICKUP = 0.25  # wet: share of the colour under the brush mixed into its paint
+HEAD = 0.30  # wet, drag: the bristles touch down within this share of the length
+SIDE_WAVER = 0.18  # wet, drag: how far a side may come in (share of the half width)
+STICK_EDGE = 1.15  # stick: the soft edge reaches 0 at this many half-sizes from the centre
+SIDE_STEP = 18.0  # px between the wavering side's samples along the stroke
+FRAY = 0.35  # wet, drag: the outer share of the half width where bristles drop out one by one
+RAKE_HAIRS, RAKE_HAIR_PX, RAKE_FAN = 6, 0.6, 0.15  # rake: hairs a stroke, a hair's width at its root (px), how far
+# the hairs fan out at the tip (share of the stroke's width)
+RAKE_BEND, RAKE_BEND_OWN = 0.12, 0.02  # rake: the hairs' common bend and each hair's own (share of length)
+RAKE_START, RAKE_END, RAKE_FADE = 0.05, 0.85, 0.45  # rake: a hair starts within the first 5%, ends past 85% of the
+# length, and fades out over its last 45%
+DOT_EDGE = 0.5  # dot: px over which its rim fades
+WHISKER_DROOP = (0.06, 0.16)  # whisker: how far its tip hangs below the straight line, a share of its length
+SUBPIXELS = ((-0.25, -0.25), (0.25, -0.25), (-0.25, 0.25), (0.25, 0.25))  # 2x2 samples a pixel for fine brushes
 HASH_KEYS = (73856093, 19349663, 83492791, 2654435761)
 
 
 class StrokeParams(NamedTuple):
     """A layer's strokes in canvas units."""
 
-    xy: torch.Tensor             # (n, 2) centres, pixels
-    lw: torch.Tensor             # (n, 2) length and width, pixels
-    angle: torch.Tensor          # (n,) radians
-    colour: torch.Tensor         # (n, 3) RGB in 0-1
-    alpha: torch.Tensor          # (n,) opacity
+    xy: torch.Tensor  # (n, 2) centres, pixels
+    lw: torch.Tensor  # (n, 2) length and width, pixels
+    angle: torch.Tensor  # (n,) radians
+    colour: torch.Tensor  # (n, 3) RGB in 0-1
+    alpha: torch.Tensor  # (n,) opacity
 
 
 @dataclass(frozen=True)
@@ -134,6 +134,7 @@ def noise1(seed: torch.Tensor, x: torch.Tensor, salt: float, extra: torch.Tensor
 def paper_grain(grid: torch.Tensor) -> torch.Tensor:
     """The paper's grain, fixed on the canvas: two octaves of smooth value noise, the finer one on a turned lattice
     so no square cells show; values 0-1, the shape of grid[..., 0]."""
+
     def octave(q: torch.Tensor, salt: float) -> torch.Tensor:
         q0 = torch.floor(q)
         f = _smooth(q - q0)
@@ -142,6 +143,7 @@ def paper_grain(grid: torch.Tensor) -> torch.Tensor:
         top = c[0][0] + (c[0][1] - c[0][0]) * f[..., 0]
         bottom = c[1][0] + (c[1][1] - c[1][0]) * f[..., 0]
         return top + (bottom - top) * f[..., 1]
+
     turn = torch.tensor([[0.8, -0.6], [0.6, 0.8]], device=grid.device)
     return 0.55 * octave(grid / GRAIN_PX, 9.0) + 0.45 * octave((grid @ turn) / (GRAIN_PX / 2.3), 11.0)
 
@@ -177,25 +179,26 @@ def bristle_body(seed: torch.Tensor, u, v, h, w, s, solid: bool) -> tuple[torch.
     the tail. solid (wet paint): the body is nearly opaque and the streaks show as small differences in value
     (shade); otherwise (drag) the lanes' strength varies more, so the pull is streaky."""
     sd = seed[:, None, None]
-    taper = (1 - 0.35 * s ** 2) * (1 - 0.35 * (1 - s) ** 2) / 0.9
+    taper = (1 - 0.35 * s**2) * (1 - 0.35 * (1 - s) ** 2) / 0.9
     side = torch.where(v < 0, 0.0, 1.0)
-    waver = 1 - SIDE_WAVER * (0.7 * noise1(sd, (u + h) / SIDE_STEP, 8.0, side)
-                              + 0.3 * noise1(sd, (u + h) / (SIDE_STEP / 3.1), 10.0, side))
+    waver = 1 - SIDE_WAVER * (
+        0.7 * noise1(sd, (u + h) / SIDE_STEP, 8.0, side) + 0.3 * noise1(sd, (u + h) / (SIDE_STEP / 3.1), 10.0, side)
+    )
     half = w * taper * waver
     outline = torch.sigmoid((h - u.abs()) / 0.7) * torch.sigmoid((half - v.abs()) / 1.2)
     lanes = (2 * w / BRISTLE_PX).clamp(min=3)
-    across = v / (2 * w * taper.clamp(min=0.05))                      # -0.5 .. 0.5 across the narrowing stroke
+    across = v / (2 * w * taper.clamp(min=0.05))  # -0.5 .. 0.5 across the narrowing stroke
     t = (across + 0.5) * lanes
     lane = torch.floor(t)
     strength = noise1(sd, t, 1.0)
     strength = (0.8 + 0.2 * strength) if solid else (0.35 + 0.65 * strength)
-    strength = strength * (1 - 0.45 * (2 * across.abs()).clamp(0, 1) ** 3)       # outer bristles carry less
-    edge = ((2 * across.abs() - (1 - FRAY)) / FRAY).clamp(0, 1)                    # 0 inside, 1 at the side
+    strength = strength * (1 - 0.45 * (2 * across.abs()).clamp(0, 1) ** 3)  # outer bristles carry less
+    edge = ((2 * across.abs() - (1 - FRAY)) / FRAY).clamp(0, 1)  # 0 inside, 1 at the side
     keep = torch.sigmoid((noise1(sd, (u + h) / 6.0, 12.0, lane) - edge) * 12 + 3)  # outer bristles break off
     start, end = HEAD * noise1(sd, t, 6.0), 0.55 + 0.45 * noise1(sd, t, 2.0)
     run = torch.sigmoid((end - s) * 2 * h / 1.5) * torch.sigmoid((s - start) * 2 * h / 1.5)
-    tail = (-0.4 + 1.3 * ((s - 0.45) / 0.55).clamp(0, 1) ** 2) if solid else (-0.1 + 0.7 * s ** 2)
-    head = -0.4 + 0.9 * ((HEAD - s) / HEAD).clamp(0, 1) ** 2                       # a little dry where it touches down
+    tail = (-0.4 + 1.3 * ((s - 0.45) / 0.55).clamp(0, 1) ** 2) if solid else (-0.1 + 0.7 * s**2)
+    head = -0.4 + 0.9 * ((HEAD - s) / HEAD).clamp(0, 1) ** 2  # a little dry where it touches down
     floor = torch.maximum(tail, head)
     dry = torch.sigmoid((noise1(sd, (u + h) / 2.5, 3.0, lane) - floor) * 10)
     shade = 1 + 0.18 * (noise1(sd, t, 4.0) - 0.5) if solid else torch.ones_like(t)
@@ -207,12 +210,12 @@ def whisker(p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor) -> torch.Te
     droop * length * f**2 at f of the way to the tip, its width w at the root narrowing to 0 at the tip."""
     lo, hi = WHISKER_DROOP
     droop = lo + (hi - lo) * hash01(seed, torch.full_like(seed, 41.0))
-    down = torch.where(p.angle.cos() >= 0, 1.0, -1.0)                     # +v is down when the stroke points right
+    down = torch.where(p.angle.cos() >= 0, 1.0, -1.0)  # +v is down when the stroke points right
     out = 0
     for dx, dy in SUBPIXELS:
         u, v, h, w, _ = frame(p, grid + torch.tensor([dx, dy], device=grid.device))
         f = ((u + h) / (2 * h)).clamp(0, 1)
-        centre = (droop * down)[:, None, None] * 2 * h * f ** 2
+        centre = (droop * down)[:, None, None] * 2 * h * f**2
         half = w * root(1 - f, 0.8)
         out = out + torch.sigmoid((h - u.abs()) / 0.5) * torch.sigmoid((half - (v - centre).abs()) / 0.35)
     return out / 4
@@ -231,18 +234,23 @@ def rake(p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor) -> torch.Tenso
         for j in range(RAKE_HAIRS):
             jj = torch.full_like(sd, float(j))
             across = (j + 0.5) / RAKE_HAIRS - 0.5 + 0.3 * (hash01(sd, jj, torch.full_like(sd, 51.0)) - 0.5) / RAKE_HAIRS
-            bend = RAKE_BEND * (2 * hash01(sd, torch.full_like(sd, 59.0)) - 1) \
-                + RAKE_BEND_OWN * (2 * hash01(sd, jj, torch.full_like(sd, 53.0)) - 1)
+            bend = RAKE_BEND * (2 * hash01(sd, torch.full_like(sd, 59.0)) - 1) + RAKE_BEND_OWN * (
+                2 * hash01(sd, jj, torch.full_like(sd, 53.0)) - 1
+            )
             start = RAKE_START * hash01(sd, jj, torch.full_like(sd, 55.0))
             end = RAKE_END + (1 - RAKE_END) * hash01(sd, jj, torch.full_like(sd, 57.0))
             f = ((s - start) / (end - start)).clamp(0, 1)
-            centre = 2 * w * across * (1 + RAKE_FAN * f) + bend * 2 * h * f ** 2
+            centre = 2 * w * across * (1 + RAKE_FAN * f) + bend * 2 * h * f**2
             half = 0.5 * RAKE_HAIR_PX * root(1 - f, 0.7) + 0.15
             fade = ((1 - f) / RAKE_FADE).clamp(max=1)
-            hair = torch.sigmoid((half - (v - centre).abs()) / 0.35) * torch.sigmoid((s - start) * 2 * h / 0.7) \
-                * torch.sigmoid((end - s) * 2 * h / 0.7) * fade
+            hair = (
+                torch.sigmoid((half - (v - centre).abs()) / 0.35)
+                * torch.sigmoid((s - start) * 2 * h / 0.7)
+                * torch.sigmoid((end - s) * 2 * h / 0.7)
+                * fade
+            )
             keep = keep * (1 - hair)
-        out = out + (1 - keep) * torch.sigmoid((h - u.abs()) / 0.5)       # nothing past the stroke's ends
+        out = out + (1 - keep) * torch.sigmoid((h - u.abs()) / 0.5)  # nothing past the stroke's ends
     return out / 4
 
 
@@ -251,8 +259,8 @@ def liner(p: StrokeParams, grid: torch.Tensor) -> torch.Tensor:
     out = 0
     for dx, dy in SUBPIXELS:
         u, v, h, w, _ = frame(p, grid + torch.tensor([dx, dy], device=grid.device))
-        run = (u.abs() - (h - w).clamp(min=0)).clamp(min=0)              # 0 along the middle, round past the ends
-        out = out + torch.sigmoid((w - torch.sqrt(run ** 2 + v ** 2 + 1e-8)) / 0.35)
+        run = (u.abs() - (h - w).clamp(min=0)).clamp(min=0)  # 0 along the middle, round past the ends
+        out = out + torch.sigmoid((w - torch.sqrt(run**2 + v**2 + 1e-8)) / 0.35)
     return out / 4
 
 
@@ -266,8 +274,9 @@ def dot(p: StrokeParams, grid: torch.Tensor) -> torch.Tensor:
     return out / 4
 
 
-def coverage(kind: str, p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor
-             ) -> tuple[torch.Tensor, torch.Tensor | None]:
+def coverage(
+    kind: str, p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor | None]:
     """Each stroke's coverage (n, H, W) in 0-1, before its opacity, and the wet brush's shade (None for others)."""
     if kind not in KINDS:
         raise ValueError(f"unknown brush kind {kind!r}")
@@ -286,11 +295,11 @@ def coverage(kind: str, p: StrokeParams, seed: torch.Tensor, grid: torch.Tensor
         return cov, (shade if kind == "wet" else None)
     if kind == "stick":
         r = torch.sqrt((u / h) ** 2 + (v / w) ** 2 + 1e-8)
-        body = _smooth(((STICK_EDGE - r) / (STICK_EDGE - 0.55)).clamp(0, 1))      # soft, exactly 0 past STICK_EDGE
+        body = _smooth(((STICK_EDGE - r) / (STICK_EDGE - 0.55)).clamp(0, 1))  # soft, exactly 0 past STICK_EDGE
         g = paper_grain(grid if grid.dim() == 4 else grid[None])
-        depth = (1 - p.alpha).clamp(0.15, 0.85)[:, None, None]                  # the paper shows through faint strokes
+        depth = (1 - p.alpha).clamp(0.15, 0.85)[:, None, None]  # the paper shows through faint strokes
         return body * (1 - depth + depth * torch.sigmoid((g - (1 - body)) * 6)), None
-    taper = root((1 - (2 * s - 1) ** 2).clamp(min=0), 0.5)                   # pencil: thin at both ends
+    taper = root((1 - (2 * s - 1) ** 2).clamp(min=0), 0.5)  # pencil: thin at both ends
     return torch.sigmoid((h - u.abs()) / 0.5) * torch.sigmoid((w * taper - v.abs()) / 0.35), None
 
 
@@ -313,7 +322,7 @@ def drag_source(canvas: torch.Tensor, p: StrokeParams, seed: torch.Tensor, grid:
 def windows(p: StrokeParams, brush: Brush) -> tuple[torch.Tensor, torch.Tensor, int]:
     """Every stroke's square window of pixels: ix, iy (n, side * side of the window) and the window's half side,
     large enough for a stroke 1.5 times the layer's nominal size."""
-    reach = STICK_EDGE if brush.kind == "stick" else 1.0                      # the stick's soft edge reaches further
+    reach = STICK_EDGE if brush.kind == "stick" else 1.0  # the stick's soft edge reaches further
     half = int(math.ceil(reach * math.hypot(0.75 * brush.length, 0.75 * brush.width) + 6))
     off = torch.arange(-half, half + 1, device=p.xy.device)
     oy, ox = torch.meshgrid(off, off, indexing="ij")
@@ -337,16 +346,16 @@ def lay(canvas: torch.Tensor, start: torch.Tensor, p: StrokeParams, seed: torch.
     cov, shade = coverage(brush.kind, p, seed, grid)
     valid = ((ix >= 0) & (ix < w) & (iy >= 0) & (iy < h)).float()
     a = (cov.reshape(n, m) * p.alpha[:, None] * valid).clamp(max=1 - 1e-6)
-    pix = (iy.clamp(0, h - 1) * w + ix.clamp(0, w - 1))
-    under = start.reshape(-1, 3)[pix]                                             # (n, m, 3)
+    pix = iy.clamp(0, h - 1) * w + ix.clamp(0, w - 1)
+    under = start.reshape(-1, 3)[pix]  # (n, m, 3)
     if brush.kind == "drag":
         col = drag_source(start, p, seed, grid).reshape(n, m, 3)
     elif brush.kind == "wet":
         col = ((1 - brush.pickup) * p.colour[:, None, :] + brush.pickup * under) * shade.reshape(n, m, 1)
     else:
         col = p.colour[:, None, :].expand(n, m, 3)
-    keep_box = a > 1e-4                                                           # only entries that paint anything
-    if not bool(keep_box.any()):                                                  # e.g. a nearly clear stroke
+    keep_box = a > 1e-4  # only entries that paint anything
+    if not bool(keep_box.any()):  # e.g. a nearly clear stroke
         return canvas + 0 * a.sum()
     pix_k, a_k, col_k = pix[keep_box], a[keep_box], col.clamp(0, 1)[keep_box]
     dev = canvas.device

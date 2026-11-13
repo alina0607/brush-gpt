@@ -37,9 +37,20 @@ def plan_one(name: str, cutout: str, out: Path, template: np.ndarray, sam: Sam) 
     z = np.load(cutout, allow_pickle=True)
     plan = make_plan(z["target"], z["tri"], z["points"], template, sam)
     save_plan(out, plan)
-    print(json.dumps({"cat": name, "yaw": round(plan.pose.yaw, 1), "pitch": round(plan.pose.pitch, 1),
-                      "roll": round(plan.pose.roll, 1), "tokens": len(plan.tokens), "nose": plan.nose is not None,
-                      "seconds": round(time.time() - t0, 1)}), flush=True)
+    print(
+        json.dumps(
+            {
+                "cat": name,
+                "yaw": round(plan.pose.yaw, 1),
+                "pitch": round(plan.pose.pitch, 1),
+                "roll": round(plan.pose.roll, 1),
+                "tokens": len(plan.tokens),
+                "nose": plan.nose is not None,
+                "seconds": round(time.time() - t0, 1),
+            }
+        ),
+        flush=True,
+    )
 
 
 def fit_template(files: list[str], out: Path) -> None:

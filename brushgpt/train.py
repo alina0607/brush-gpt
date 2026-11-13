@@ -36,8 +36,9 @@ SWAP_TEST_PAINTINGS = 32
 
 
 # --------------------------------------------------------------------------------------------------------- data
-def layout_from_specials(specials: list[str], field_names: list[str], field_sizes: list[int],
-                         palette_k: tuple[int, int] = (0, 0)) -> TokenLayout:
+def layout_from_specials(
+    specials: list[str], field_names: list[str], field_sizes: list[int], palette_k: tuple[int, int] = (0, 0)
+) -> TokenLayout:
     """The TokenLayout of a vocabulary whose first ids are the named special tokens, followed by each field's tokens.
     palette_k: the number of colours after the whole-face palette marker and after each eye's palette marker."""
     index = {n: i for i, n in enumerate(specials)}
@@ -48,13 +49,17 @@ def layout_from_specials(specials: list[str], field_names: list[str], field_size
         o += size
     plan = [i for i, n in enumerate(specials) if n.startswith("PLAN_") and n not in ("PLAN_POSE", "PLAN_END")]
     k_all, k_eye = palette_k
-    palette = [(index[n], k) for n, k in (("PAL_ALL", k_all), ("PAL_EYE_L", k_eye), ("PAL_EYE_R", k_eye))
-               if n in index]
+    palette = [(index[n], k) for n, k in (("PAL_ALL", k_all), ("PAL_EYE_L", k_eye), ("PAL_EYE_R", k_eye)) if n in index]
     if len(field_names) != len(field_sizes):
         raise ValueError("one size per field")
-    return TokenLayout(bos=index["BOS"], slots=(*slots, index["EOS"]), field_offsets=tuple(offsets),
-                       field_sizes=tuple(int(s) for s in field_sizes), plan_markers=tuple(plan),
-                       palette=tuple(palette))
+    return TokenLayout(
+        bos=index["BOS"],
+        slots=(*slots, index["EOS"]),
+        field_offsets=tuple(offsets),
+        field_sizes=tuple(int(s) for s in field_sizes),
+        plan_markers=tuple(plan),
+        palette=tuple(palette),
+    )
 
 
 class PaintingData:
@@ -69,8 +74,9 @@ class PaintingData:
         self.specials = [str(s) for s in z["specials"]]
         self.vocab = int(z["vocab"])
         palette_k = tuple(int(v) for v in z["palette_k"]) if "palette_k" in z.files else (0, 0)
-        self.layout = layout_from_specials(self.specials, [str(f) for f in z["field_names"]],
-                                           [int(s) for s in z["field_sizes"]], palette_k)
+        self.layout = layout_from_specials(
+            self.specials, [str(f) for f in z["field_names"]], [int(s) for s in z["field_sizes"]], palette_k
+        )
         if self.layout.field_offsets[-1] + self.layout.field_sizes[-1] != self.vocab:
             raise ValueError("the special tokens and fields do not add up to the vocabulary")
         self.task_token = self.specials.index("TASK_GEN") if "TASK_GEN" in self.specials else None
@@ -107,8 +113,11 @@ class PaintingData:
     def _init_swap_test(self) -> None:
         sp = self.specials
         self.eye_layers = [sp.index(f"LAYER{k}") for k in EYE_LAYERS if f"LAYER{k}" in sp]
-        colours = [i for i, n in enumerate(sp) if n.startswith("COND_")
-                   and not n.startswith(("COND_BASE_", "COND_PAT_")) and n != "COND_unclear"]
+        colours = [
+            i
+            for i, n in enumerate(sp)
+            if n.startswith("COND_") and not n.startswith(("COND_BASE_", "COND_PAT_")) and n != "COND_unclear"
+        ]
         self.colour_swap = dict(zip(colours, colours[1:] + colours[:1], strict=True))
         if "COND_unclear" in sp and colours:
             self.colour_swap[sp.index("COND_unclear")] = colours[0]
@@ -138,15 +147,15 @@ class PaintingData:
 @dataclass
 class TrainConfig:
     steps: int = 3000
-    accum: int = 8                 # paintings per optimiser step
+    accum: int = 8  # paintings per optimiser step
     lr: float = 3e-4
     warmup: int = 200
     weight_decay: float = 0.1
-    cond_drop: float = 0.0         # share of paintings trained with their attributes replaced by the null token
-    balance_cats: bool = False     # draw a cat first, then one of its paintings
+    cond_drop: float = 0.0  # share of paintings trained with their attributes replaced by the null token
+    balance_cats: bool = False  # draw a cat first, then one of its paintings
     eval_every: int = 250
-    eval_paintings: int = 60       # held paintings scored per evaluation
-    stop_after_min: float = 0.0    # stop (and save last.pt) after this many minutes; 0: run every step
+    eval_paintings: int = 60  # held paintings scored per evaluation
+    stop_after_min: float = 0.0  # stop (and save last.pt) after this many minutes; 0: run every step
     seed: int = 0
 
 
@@ -165,8 +174,9 @@ def autocast_for(device: torch.device | str) -> Callable[[], AbstractContextMana
     return lambda: torch.autocast("cpu", enabled=False)
 
 
-def evaluate(model: BrushGPT, data: PaintingData, items: list[int],
-             amp: Callable[[], AbstractContextManager]) -> dict[str, float]:
+def evaluate(
+    model: BrushGPT, data: PaintingData, items: list[int], amp: Callable[[], AbstractContextManager]
+) -> dict[str, float]:
     """Held loss and argmax accuracy over every token of each painting and its EOS, and (on the first
     SWAP_TEST_PAINTINGS) the swap test: eye_paint_nll with the true eye colours, eye_swap_gap the increase with them
     swapped."""
@@ -214,12 +224,14 @@ class _PaintingSampler:
 
 
 def save_checkpoint(path: Path, model: BrushGPT, train_cfg: TrainConfig, step: int) -> None:
-    torch.save({"config": model.cfg.to_dict(), "train": asdict(train_cfg), "model": model.state_dict(),
-                "step": step}, path)
+    torch.save(
+        {"config": model.cfg.to_dict(), "train": asdict(train_cfg), "model": model.state_dict(), "step": step}, path
+    )
 
 
-def train(data: PaintingData, model_cfg: BrushGPTConfig, cfg: TrainConfig, out: str | Path,
-          device: torch.device | str = "cpu") -> BrushGPT:
+def train(
+    data: PaintingData, model_cfg: BrushGPTConfig, cfg: TrainConfig, out: str | Path, device: torch.device | str = "cpu"
+) -> BrushGPT:
     """Train Brush GPT on data's training paintings; write info.json, log.jsonl, last.pt and best.pt to out."""
     if cfg.cond_drop > 0 and model_cfg.null_id is None:
         raise ValueError("condition dropout needs a model with a null token")
@@ -232,11 +244,18 @@ def train(data: PaintingData, model_cfg: BrushGPTConfig, cfg: TrainConfig, out: 
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     sampler = _PaintingSampler(data, cfg.balance_cats, cfg.seed)
-    held = [data.held[i] for i in np.random.default_rng(1).permutation(len(data.held))[:cfg.eval_paintings]]
-    info = {"config": model_cfg.to_dict(), "train": asdict(cfg), "params": model.num_params(),
-            "train_paintings": len(data.train), "train_cats": len(sampler.cats), "held_paintings": len(data.held),
-            "eval_paintings": len(held), "device": str(device),
-            "gpu": torch.cuda.get_device_name(0) if use_amp else None}
+    held = [data.held[i] for i in np.random.default_rng(1).permutation(len(data.held))[: cfg.eval_paintings]]
+    info = {
+        "config": model_cfg.to_dict(),
+        "train": asdict(cfg),
+        "params": model.num_params(),
+        "train_paintings": len(data.train),
+        "train_cats": len(sampler.cats),
+        "held_paintings": len(data.held),
+        "eval_paintings": len(held),
+        "device": str(device),
+        "gpu": torch.cuda.get_device_name(0) if use_amp else None,
+    }
     print(json.dumps(info), flush=True)
     (out / "info.json").write_text(json.dumps(info, indent=1))
     best = math.inf
@@ -260,8 +279,12 @@ def train(data: PaintingData, model_cfg: BrushGPTConfig, cfg: TrainConfig, out: 
             scaler.step(opt)
             scaler.update()
             opt.zero_grad(set_to_none=True)
-            row = {"step": step + 1, "loss": round(total, 5), "lr": lr_at(step, cfg),
-                   "seconds": round(time.time() - t0, 1)}
+            row = {
+                "step": step + 1,
+                "loss": round(total, 5),
+                "lr": lr_at(step, cfg),
+                "seconds": round(time.time() - t0, 1),
+            }
             if (step + 1) % cfg.eval_every == 0 or step + 1 == cfg.steps:
                 row |= evaluate(model, data, held, amp)
                 row["tokens_per_s"] = round(seen / (time.time() - t0), 1)
@@ -276,15 +299,23 @@ def train(data: PaintingData, model_cfg: BrushGPTConfig, cfg: TrainConfig, out: 
                 log.flush()
             if cfg.stop_after_min and time.time() - t0 > 60 * cfg.stop_after_min:
                 save_checkpoint(out / "last.pt", model, cfg, step + 1)
-                print(json.dumps({"stopped_at_step": step + 1, "minutes": round((time.time() - t0) / 60, 1)}),
-                      flush=True)
+                print(
+                    json.dumps({"stopped_at_step": step + 1, "minutes": round((time.time() - t0) / 60, 1)}), flush=True
+                )
                 break
     return model
 
 
 # ------------------------------------------------------------------------------------------------------ sampling
-def sample_held(model: BrushGPT, data: PaintingData, n_cats: int, batch: int = 8, temperature: float = 1.0,
-                guidance: float = 1.0, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+def sample_held(
+    model: BrushGPT,
+    data: PaintingData,
+    n_cats: int,
+    batch: int = 8,
+    temperature: float = 1.0,
+    guidance: float = 1.0,
+    seed: int = 0,
+) -> tuple[np.ndarray, np.ndarray]:
     """Paint the first n_cats held cats (in cat order) from their own conditions, one painting each, `batch` at a
     time, up to 1.3 times the data's longest painting. Returns (tokens (n, length) padded with -1, data rows)."""
     if guidance != 1.0 and model.cfg.null_id is None:
@@ -296,7 +327,7 @@ def sample_held(model: BrushGPT, data: PaintingData, n_cats: int, batch: int = 8
     out: list[np.ndarray] = []
     model.eval()
     for k in range(0, len(items), batch):
-        cond = torch.stack([data.example(i)[0] for i in items[k:k + batch]])
+        cond = torch.stack([data.example(i)[0] for i in items[k : k + batch]])
         uncond = drop_attributes(cond, model.cfg.null_id, data.n_attributes_kept) if guidance != 1.0 else None
         with torch.autocast("cuda", dtype=torch.float16, enabled=cond.is_cuda):
             got = model.sample(cond, max_tokens, temperature, generator, uncond, guidance)

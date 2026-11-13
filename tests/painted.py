@@ -17,11 +17,13 @@ MORE_TRAIN_CAT = "afhq__flickr_cat_000014"
 
 
 def strokes(rng: np.random.Generator, n: int, x: tuple[float, float] = (40, 470)) -> StrokeParams:
-    return StrokeParams(torch.tensor(np.c_[rng.uniform(*x, n), rng.uniform(40, 470, n)], dtype=torch.float32),
-                        torch.tensor(rng.uniform(3, 50, (n, 2)), dtype=torch.float32),
-                        torch.tensor(rng.uniform(-3, 3, n), dtype=torch.float32),
-                        torch.tensor(rng.uniform(0, 1, (n, 3)), dtype=torch.float32),
-                        torch.tensor(rng.uniform(0.3, 1, n), dtype=torch.float32))
+    return StrokeParams(
+        torch.tensor(np.c_[rng.uniform(*x, n), rng.uniform(40, 470, n)], dtype=torch.float32),
+        torch.tensor(rng.uniform(3, 50, (n, 2)), dtype=torch.float32),
+        torch.tensor(rng.uniform(-3, 3, n), dtype=torch.float32),
+        torch.tensor(rng.uniform(0, 1, (n, 3)), dtype=torch.float32),
+        torch.tensor(rng.uniform(0.3, 1, n), dtype=torch.float32),
+    )
 
 
 def write_painting(folder: Path, seed: int = 0) -> None:
@@ -46,12 +48,18 @@ def synthetic_cat(root: Path, name: str, seed: int) -> CatSource:
     """A cat whose inputs are the synthetic cut-out, photo and plan, and whose painting has random strokes."""
     inputs = synthetic_inputs()
     root.mkdir(parents=True, exist_ok=True)
-    np.savez(root / f"{name}_cutout.npz", target=inputs.target, tri=inputs.tri, points=inputs.points,
-             box=np.array(inputs.box))
+    np.savez(
+        root / f"{name}_cutout.npz",
+        target=inputs.target,
+        tri=inputs.tri,
+        points=inputs.points,
+        box=np.array(inputs.box),
+    )
     inputs.photo.save(root / f"{name}.png")
     head = np.c_[np.linspace(40, 220, 12), np.full(12, 60.0), (np.arange(12) < 3).astype(float)]
     plan = {**inputs.plan, "yaw": 10.0, "pitch": 0.0, "roll": -4.0, "head": np.array([head, head[:5]], object)}
     np.savez(root / f"{name}_plan.npz", **plan)
     write_painting(root / "paintings" / name, seed)
-    return CatSource(name, root / f"{name}_cutout.npz", root / f"{name}.png", root / f"{name}_plan.npz",
-                     root / "paintings" / name)
+    return CatSource(
+        name, root / f"{name}_cutout.npz", root / f"{name}.png", root / f"{name}_plan.npz", root / "paintings" / name
+    )

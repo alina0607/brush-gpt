@@ -65,8 +65,9 @@ class SwiGLU(nn.Module):
         return self.down(F.silu(self.gate(x)) * self.up(x))
 
 
-def rope_tables(head_dim: int, seq_len: int, theta: float = ROPE_THETA,
-                device: torch.device | str | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+def rope_tables(
+    head_dim: int, seq_len: int, theta: float = ROPE_THETA, device: torch.device | str | None = None
+) -> tuple[torch.Tensor, torch.Tensor]:
     """cos and sin of the rotation angle of every (position, feature pair): two (seq_len, head_dim / 2) tables."""
     freqs = 1.0 / theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim)
     angles = torch.outer(torch.arange(seq_len, device=device).float(), freqs)
@@ -97,10 +98,10 @@ class SelfAttentionCache:
             self.keys = k.new_zeros(batch, heads, self.size, dim)
             self.values = v.new_zeros(batch, heads, self.size, dim)
         n, t = self.length, k.size(2)
-        self.keys[:, :, n:n + t] = k
-        self.values[:, :, n:n + t] = v
+        self.keys[:, :, n : n + t] = k
+        self.values[:, :, n : n + t] = v
         self.length = n + t
-        return self.keys[:, :, :n + t], self.values[:, :, :n + t]
+        return self.keys[:, :, : n + t], self.values[:, :, : n + t]
 
 
 @dataclass
@@ -137,24 +138,28 @@ class _RotaryAttention(nn.Module):
         b, t, _ = x.shape
         return apply_rope(self.q(x).view(b, t, self.n_heads, -1).transpose(1, 2), cos, sin)
 
-    def _keys_values(self, x: torch.Tensor, cos: torch.Tensor,
-                     sin: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def _keys_values(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         b, t, _ = x.shape
         k, v = self.kv(x).view(b, t, 2, self.n_heads, -1).permute(2, 0, 3, 1, 4)
         return apply_rope(k, cos, sin), v
 
     def _attend(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, causal: bool) -> torch.Tensor:
         b, _, t, _ = q.shape
-        y = F.scaled_dot_product_attention(q, k, v, is_causal=causal,
-                                           dropout_p=self.dropout if self.training else 0.0)
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=causal, dropout_p=self.dropout if self.training else 0.0)
         return self.out(y.transpose(1, 2).reshape(b, t, -1))
 
 
 class SelfAttention(_RotaryAttention):
     """Multi-head self-attention with rotary positions; causal in the decoder, bidirectional in the encoder."""
 
-    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, causal: bool,
-                cache: SelfAttentionCache | None = None) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        cos: torch.Tensor,
+        sin: torch.Tensor,
+        causal: bool,
+        cache: SelfAttentionCache | None = None,
+    ) -> torch.Tensor:
         """x (B, T, d) -> (B, T, d). With a cache, x holds the newest positions and attends to every earlier one."""
         q = self._queries(x, cos, sin)
         k, v = self._keys_values(x, cos, sin)
@@ -167,9 +172,16 @@ class SelfAttention(_RotaryAttention):
 class CrossAttention(_RotaryAttention):
     """Multi-head attention from the decoder's positions to the encoder's output (`memory`), never causal."""
 
-    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, memory: torch.Tensor,
-                memory_cos: torch.Tensor, memory_sin: torch.Tensor,
-                cache: CrossAttentionCache | None = None) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        cos: torch.Tensor,
+        sin: torch.Tensor,
+        memory: torch.Tensor,
+        memory_cos: torch.Tensor,
+        memory_sin: torch.Tensor,
+        cache: CrossAttentionCache | None = None,
+    ) -> torch.Tensor:
         """x (B, T, d), memory (B, S, d) -> (B, T, d). cos/sin are x's rotary tables, memory_cos/sin the memory's."""
         q = self._queries(x, cos, sin)
         if cache is not None and cache.keys is not None:
@@ -205,15 +217,21 @@ class DecoderBlock(nn.Module):
         self.mlp_norm, self.mlp = RMSNorm(d_model), SwiGLU(d_model)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, memory: torch.Tensor,
-                memory_cos: torch.Tensor, memory_sin: torch.Tensor,
-                cache: DecoderLayerCache | None = None) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        cos: torch.Tensor,
+        sin: torch.Tensor,
+        memory: torch.Tensor,
+        memory_cos: torch.Tensor,
+        memory_sin: torch.Tensor,
+        cache: DecoderLayerCache | None = None,
+    ) -> torch.Tensor:
         self_cache = cross_cache = None
         if cache is not None:
             self_cache, cross_cache = cache.self_attn, cache.cross_attn
         x = x + self.dropout(self.attn(self.attn_norm(x), cos, sin, causal=True, cache=self_cache))
-        x = x + self.dropout(self.cross_attn(self.cross_norm(x), cos, sin, memory, memory_cos, memory_sin,
-                                             cross_cache))
+        x = x + self.dropout(self.cross_attn(self.cross_norm(x), cos, sin, memory, memory_cos, memory_sin, cross_cache))
         return x + self.dropout(self.mlp(self.mlp_norm(x)))
 
 
@@ -278,8 +296,9 @@ class GroupedQueryAttention(nn.Module):
         self.kv = nn.Linear(cfg.d_model, 2 * cfg.n_kv_heads * cfg.head_dim, bias=False)
         self.out = nn.Linear(cfg.n_heads * cfg.head_dim, cfg.d_model, bias=False)
 
-    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor,
-                cache: GrowingKVCache | None = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, cache: GrowingKVCache | None = None
+    ) -> torch.Tensor:
         """x (B, T, d) -> (B, T, d). With a cache, x holds the newest positions and attends to every earlier one."""
         b, t, _ = x.shape
         c = self.cfg
@@ -306,8 +325,9 @@ class GPTBlock(nn.Module):
         self.mlp_norm = RMSNorm(cfg.d_model)
         self.mlp = SwiGLU(cfg.d_model, cfg.ffn_dim)
 
-    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor,
-                cache: GrowingKVCache | None = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, cache: GrowingKVCache | None = None
+    ) -> torch.Tensor:
         x = x + self.attn(self.attn_norm(x), cos, sin, cache)
         return x + self.mlp(self.mlp_norm(x))
 
@@ -352,9 +372,15 @@ class GPT(nn.Module):
         """A fresh key/value cache for generation, one entry per layer."""
         return [GrowingKVCache() for _ in self.blocks]
 
-    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None, loss_mask: torch.Tensor | None = None,
-                cache: list[GrowingKVCache] | None = None, start_pos: int = 0,
-                masked_only: bool = False) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+    def forward(
+        self,
+        idx: torch.Tensor,
+        targets: torch.Tensor | None = None,
+        loss_mask: torch.Tensor | None = None,
+        cache: list[GrowingKVCache] | None = None,
+        start_pos: int = 0,
+        masked_only: bool = False,
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
         """idx (B, T) -> (logits (B, T, V), loss). The loss is the mean cross-entropy over the positions where
         loss_mask is 1 (every position without a mask), or None without targets.
 
@@ -362,8 +388,8 @@ class GPT(nn.Module):
         are returned; the same loss with far less memory when the scored part of each sequence is small.
         cache and start_pos (generation): idx holds the positions start_pos onward; earlier ones are in the cache."""
         t = idx.size(1)
-        cos = self.rope_cos[start_pos:start_pos + t]
-        sin = self.rope_sin[start_pos:start_pos + t]
+        cos = self.rope_cos[start_pos : start_pos + t]
+        sin = self.rope_sin[start_pos : start_pos + t]
         x = self.embed(idx)
         for i, block in enumerate(self.blocks):
             x = block(x, cos, sin, None if cache is None else cache[i])

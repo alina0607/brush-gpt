@@ -38,24 +38,24 @@ from skimage.measure import find_contours
 
 from .cat import face_frame
 
-GRID = 256                          # the cut-out's and the face points' grid
+GRID = 256  # the cut-out's and the face points' grid
 TEMPLATE_FILE = Path(__file__).parent / "data" / "cat_head_template.npy"
 SAM_MODEL = "facebook/sam-vit-base"
 PLAN_VERSION = "sketch-plan-v1"
-EARS = ((3, 4, 5), (6, 7, 8))       # each ear's face points: base, tip, base
-EAR_GROW = 1.25                     # an ear triangle enlarged about its middle when flagging outline points
-HEAD_STEP = 6.0                     # px between plan points along the head's outline
-EYE_POINTS = 16                     # points per eye outline
-NOSE_POINTS = 12                    # points per nose outline
-EYE_CROP = 1.2                      # the eye crop's side for SAM, in eye distances
-EYE_PROMPTS = ((0, 0), (0, 0.08), (0, 0.15), (0, -0.08))   # prompt centres (along, across the eye line), eye distances
-NOSE_AT = 0.85                      # the nose prompt, as a fraction of the way from the eyes' midpoint to the mouth
-BRIDGE_AT = 0.45                    # a negative prompt on the bridge of the nose (else SAM takes the whole bridge)
-PUPIL_SHRINK = 0.75                 # the eye outline shrunk about its centre before looking for the pupil
-MOUTH_HALF = 0.4                    # half the mouth's width searched, in eye distances
-MOUTH_FLOOR = 0.02                  # a mouth column is strong when its line is at least this much darker than its sides
-MOUTH_GAP = 3                       # weak columns in a row the mouth line may cross
-ANGLE_BINS = 64                     # angle tokens over -90..90 degrees
+EARS = ((3, 4, 5), (6, 7, 8))  # each ear's face points: base, tip, base
+EAR_GROW = 1.25  # an ear triangle enlarged about its middle when flagging outline points
+HEAD_STEP = 6.0  # px between plan points along the head's outline
+EYE_POINTS = 16  # points per eye outline
+NOSE_POINTS = 12  # points per nose outline
+EYE_CROP = 1.2  # the eye crop's side for SAM, in eye distances
+EYE_PROMPTS = ((0, 0), (0, 0.08), (0, 0.15), (0, -0.08))  # prompt centres (along, across the eye line), eye distances
+NOSE_AT = 0.85  # the nose prompt, as a fraction of the way from the eyes' midpoint to the mouth
+BRIDGE_AT = 0.45  # a negative prompt on the bridge of the nose (else SAM takes the whole bridge)
+PUPIL_SHRINK = 0.75  # the eye outline shrunk about its centre before looking for the pupil
+MOUTH_HALF = 0.4  # half the mouth's width searched, in eye distances
+MOUTH_FLOOR = 0.02  # a mouth column is strong when its line is at least this much darker than its sides
+MOUTH_GAP = 3  # weak columns in a row the mouth line may cross
+ANGLE_BINS = 64  # angle tokens over -90..90 degrees
 
 
 # ------------------------------------------------------------------ pose
@@ -67,16 +67,24 @@ def fit_head_template(points: np.ndarray) -> np.ndarray:
     template is expressed in the face's frame: eye distance 1, x along the eyes, y towards the mouth, z away from the
     viewer (the ears lie behind the mouth)."""
     centred = points - points.mean(1, keepdims=True)
-    W = np.concatenate([centred[..., 0], centred[..., 1]], 0)          # (2F, 9): all x rows, then all y rows
+    W = np.concatenate([centred[..., 0], centred[..., 1]], 0)  # (2F, 9): all x rows, then all y rows
     U, s, Vt = np.linalg.svd(W, full_matrices=False)
     cameras, shape = U[:, :3] * np.sqrt(s[:3]), np.sqrt(s[:3])[:, None] * Vt[:3]
     f = len(points)
     m, n = cameras[:f], cameras[f:]
 
-    def quadratic(a: np.ndarray, b: np.ndarray) -> np.ndarray:         # a L b^T, linear in L's six entries
-        return np.stack([a[:, 0] * b[:, 0], a[:, 0] * b[:, 1] + a[:, 1] * b[:, 0],
-                         a[:, 0] * b[:, 2] + a[:, 2] * b[:, 0], a[:, 1] * b[:, 1],
-                         a[:, 1] * b[:, 2] + a[:, 2] * b[:, 1], a[:, 2] * b[:, 2]], 1)
+    def quadratic(a: np.ndarray, b: np.ndarray) -> np.ndarray:  # a L b^T, linear in L's six entries
+        return np.stack(
+            [
+                a[:, 0] * b[:, 0],
+                a[:, 0] * b[:, 1] + a[:, 1] * b[:, 0],
+                a[:, 0] * b[:, 2] + a[:, 2] * b[:, 0],
+                a[:, 1] * b[:, 1],
+                a[:, 1] * b[:, 2] + a[:, 2] * b[:, 1],
+                a[:, 2] * b[:, 2],
+            ],
+            1,
+        )
 
     A = np.concatenate([quadratic(m, m) - quadratic(n, n), quadratic(m, n)], 0)
     ell = np.linalg.svd(A)[2][-1]
@@ -85,7 +93,7 @@ def fit_head_template(points: np.ndarray) -> np.ndarray:
         L = -L
     vals, vecs = np.linalg.eigh(L)
     Q = vecs @ np.diag(np.sqrt(np.clip(vals, 1e-12, None)))
-    shape = np.linalg.solve(Q, shape)                                   # (3, 9), metric up to a rotation
+    shape = np.linalg.solve(Q, shape)  # (3, 9), metric up to a rotation
     ex = shape[:, 1] - shape[:, 0]
     d = np.linalg.norm(ex)
     ex /= d
@@ -94,7 +102,7 @@ def fit_head_template(points: np.ndarray) -> np.ndarray:
     ey /= np.linalg.norm(ey)
     ez = np.cross(ex, ey)
     t = np.stack([ex, ey, ez]) @ (shape - shape[:, :2].mean(1, keepdims=True)) / d
-    if t[2, [3, 4, 5, 6, 7, 8]].mean() < t[2, 2]:                       # a reflection: ears go behind the mouth
+    if t[2, [3, 4, 5, 6, 7, 8]].mean() < t[2, 2]:  # a reflection: ears go behind the mouth
         t[2] = -t[2]
     return t
 
@@ -120,9 +128,9 @@ class Pose:
 def head_pose(template: np.ndarray, points: np.ndarray) -> Pose:
     """The scaled-orthographic fit of the template (3, 9) to one cat's points (9, 2): the least-squares affine
     camera, projected to the nearest scaled rotation."""
-    w = (points - points.mean(0)).T                                     # (2, 9)
+    w = (points - points.mean(0)).T  # (2, 9)
     s = template - template.mean(1, keepdims=True)
-    affine = w @ np.linalg.pinv(s)                                      # (2, 3)
+    affine = w @ np.linalg.pinv(s)  # (2, 3)
     u, sig, vt = np.linalg.svd(affine, full_matrices=False)
     r12 = u @ vt
     R = np.vstack([r12, np.cross(r12[0], r12[1])])
@@ -167,7 +175,7 @@ def head_outline(tri: np.ndarray, points: np.ndarray) -> list[np.ndarray]:
     near_background = binary_dilation(tri == 0, iterations=2)
     runs = []
     for contour in find_contours(np.pad(tri == 1, 1).astype(float), 0.5):
-        xy = contour[:, ::-1] - 1                                       # (x, y) in pixels
+        xy = contour[:, ::-1] - 1  # (x, y) in pixels
         if len(xy) < 20:
             continue
         ix = np.clip(xy[:, 0].round().astype(int), 0, GRID - 1)
@@ -175,7 +183,7 @@ def head_outline(tri: np.ndarray, points: np.ndarray) -> list[np.ndarray]:
         on = near_background[iy, ix]
         if on.all():
             pieces = [xy]
-        else:                                                           # start off the background: no run wraps around
+        else:  # start off the background: no run wraps around
             k = int(np.argmin(on))
             xy, on = np.roll(xy, -k, 0), np.roll(on, -k)
             labels, n = connected_components(on)
@@ -201,6 +209,7 @@ def load_sam(name: str = SAM_MODEL, local_only: bool = False) -> Sam:
     """SAM on the CPU in eval mode. With `local_only` it is read from the Hugging Face cache only (an OSError when it
     is not there); otherwise it is downloaded on first use."""
     from transformers import SamModel, SamProcessor
+
     model = SamModel.from_pretrained(name, use_safetensors=True, local_files_only=local_only).eval()
     return Sam(model, SamProcessor.from_pretrained(name, local_files_only=local_only))
 
@@ -209,16 +218,22 @@ def sam_masks(sam: Sam, image: np.ndarray, positive: list, negative: list, embed
     """SAM's three masks and their predicted IoU scores for point prompts on a uint8 image, and the image embedding
     (pass it back to prompt the same image again without re-encoding it)."""
     import torch
+
     prompts = [[[list(map(float, q)) for q in positive + negative]]]
     labels = [[[1] * len(positive) + [0] * len(negative)]]
     inputs = sam.processor(images=image, input_points=prompts, input_labels=labels, return_tensors="pt")
     with torch.no_grad():
         if embedding is None:
             embedding = sam.model.get_image_embeddings(inputs["pixel_values"])
-        out = sam.model(image_embeddings=embedding, input_points=inputs["input_points"],
-                        input_labels=inputs["input_labels"], multimask_output=True)
-    masks = sam.processor.image_processor.post_process_masks(out.pred_masks, inputs["original_sizes"],
-                                                             inputs["reshaped_input_sizes"])[0][0].numpy()
+        out = sam.model(
+            image_embeddings=embedding,
+            input_points=inputs["input_points"],
+            input_labels=inputs["input_labels"],
+            multimask_output=True,
+        )
+    masks = sam.processor.image_processor.post_process_masks(
+        out.pred_masks, inputs["original_sizes"], inputs["reshaped_input_sizes"]
+    )[0][0].numpy()
     return masks, out.iou_scores[0, 0].numpy(), embedding
 
 
@@ -232,13 +247,17 @@ def is_eye_like(mask: np.ndarray, eye: np.ndarray, d: float) -> bool:
     area of a disc of 0.10-0.35 eye distances, no point farther than 0.4 eye distances from its centre, its centre
     within 0.25 eye distances of the eye point, and it fills at least 0.85 of its convex hull."""
     from skimage.morphology import convex_hull_image
+
     area = mask.sum()
     if not np.pi * (0.10 * d) ** 2 < area < np.pi * (0.35 * d) ** 2:
         return False
     ys, xs = np.nonzero(mask)
     centre = np.array([xs.mean(), ys.mean()])
-    return not (np.hypot(xs - centre[0], ys - centre[1]).max() > 0.4 * d or np.linalg.norm(centre - eye) > 0.25 * d
-                or area < 0.85 * convex_hull_image(mask).sum())
+    return not (
+        np.hypot(xs - centre[0], ys - centre[1]).max() > 0.4 * d
+        or np.linalg.norm(centre - eye) > 0.25 * d
+        or area < 0.85 * convex_hull_image(mask).sum()
+    )
 
 
 def eye_outlines(sam: Sam, target: np.ndarray, eyes: np.ndarray, d: float) -> list[np.ndarray]:
@@ -257,8 +276,9 @@ def eye_outlines(sam: Sam, target: np.ndarray, eyes: np.ndarray, d: float) -> li
         side = EYE_CROP * d
         lo = e - side / 2
         zoom = GRID / side
-        crop = np.asarray(image.transform((GRID, GRID), Image.EXTENT, (*lo, *(lo + side)), Image.BICUBIC,
-                                          fillcolor=(255, 255, 255)))
+        crop = np.asarray(
+            image.transform((GRID, GRID), Image.EXTENT, (*lo, *(lo + side)), Image.BICUBIC, fillcolor=(255, 255, 255))
+        )
 
         def to_crop(q: np.ndarray, lo: np.ndarray = lo, zoom: float = zoom) -> np.ndarray:
             return (q - lo) * zoom
@@ -288,8 +308,12 @@ def nose_outline(sam: Sam, target: np.ndarray, points: np.ndarray, d: float) -> 
     nose = mid + NOSE_AT * (points[2] - mid)
     ex = (points[1] - points[0]) / d
     positive = [nose, nose + 0.08 * d * ex, nose - 0.08 * d * ex]
-    negative = [points[0], points[1], mid + BRIDGE_AT * (points[2] - mid),
-                points[2] + 0.15 * d * (points[2] - mid) / np.linalg.norm(points[2] - mid)]
+    negative = [
+        points[0],
+        points[1],
+        mid + BRIDGE_AT * (points[2] - mid),
+        points[2] + 0.15 * d * (points[2] - mid) / np.linalg.norm(points[2] - mid),
+    ]
     masks, scores, _ = sam_masks(sam, (target.clip(0, 1) * 255).astype(np.uint8), positive, negative)
     area = masks.reshape(len(masks), -1).sum(1)
     ok = (area > np.pi * (0.06 * d) ** 2) & (area < np.pi * (0.25 * d) ** 2)
@@ -309,8 +333,8 @@ def dark_lines(lum: np.ndarray, s: int = 2) -> np.ndarray:
     h, w = lum.shape
     out = np.zeros_like(lum)
     for dy, dx in ((0, s), (s, 0), (s, s), (s, -s)):
-        a = p[s + dy:s + dy + h, s + dx:s + dx + w]
-        b = p[s - dy:s - dy + h, s - dx:s - dx + w]
+        a = p[s + dy : s + dy + h, s + dx : s + dx + w]
+        b = p[s - dy : s - dy + h, s - dx : s - dx + w]
         out = np.maximum(out, (a + b) / 2 - lum)
     return out.clip(0)
 
@@ -346,15 +370,19 @@ def pupil_ellipse(lum: np.ndarray, outline: np.ndarray) -> Pupil | None:
     if labels[iy, ix] == 0:
         return None
     blob = labels == labels[iy, ix]
-    if blob.sum() < 3:                                                  # one or two pixels: no shape to fit
+    if blob.sum() < 3:  # one or two pixels: no shape to fit
         return None
     ys, xs = np.nonzero(blob)
     cov = np.cov(np.c_[xs, ys].T) + np.eye(2) * 1e-3
     vals, vecs = np.linalg.eigh(cov)
     if not np.all(np.isfinite(vals)):
         return None
-    return Pupil(np.array([xs.mean(), ys.mean()]) + 0.5, 2 * np.sqrt(vals[::-1]),
-                 float(np.arctan2(vecs[1, 1], vecs[0, 1])), float(blob.sum() / inside.sum()))
+    return Pupil(
+        np.array([xs.mean(), ys.mean()]) + 0.5,
+        2 * np.sqrt(vals[::-1]),
+        float(np.arctan2(vecs[1, 1], vecs[0, 1])),
+        float(blob.sum() / inside.sum()),
+    )
 
 
 def to_face(points: np.ndarray, xy: np.ndarray) -> np.ndarray:
@@ -379,7 +407,7 @@ def mouth_line(lum: np.ndarray, points: np.ndarray, nose: np.ndarray | None, d: 
     ys = np.arange(top, m[1] + 0.3, 0.5 / d)
     if len(ys) < 2:
         return np.zeros((0, 2))
-    q = mid + d * (xs[:, None, None] * ex + ys[None, :, None] * ey)        # (columns, rows, 2) on the canvas
+    q = mid + d * (xs[:, None, None] * ex + ys[None, :, None] * ey)  # (columns, rows, 2) on the canvas
     ix, iy = np.clip(q[..., 0].astype(int), 0, GRID - 1), np.clip(q[..., 1].astype(int), 0, GRID - 1)
     v = lines[iy, ix]
     score, back = v[0].copy(), np.zeros(v.shape, int)
@@ -394,11 +422,11 @@ def mouth_line(lum: np.ndarray, points: np.ndarray, nose: np.ndarray | None, d: 
     path = path[::-1]
     strong = v[np.arange(len(xs)), path] >= MOUTH_FLOOR
     lo = hi = int(np.argmin(np.abs(xs - m[0])))
-    while lo > 0 and strong[max(0, lo - MOUTH_GAP):lo].any():
+    while lo > 0 and strong[max(0, lo - MOUTH_GAP) : lo].any():
         lo -= 1
-    while hi < len(xs) - 1 and strong[hi + 1:hi + 1 + MOUTH_GAP].any():
+    while hi < len(xs) - 1 and strong[hi + 1 : hi + 1 + MOUTH_GAP].any():
         hi += 1
-    return q[np.arange(lo, hi + 1), np.array(path[lo:hi + 1])]
+    return q[np.arange(lo, hi + 1), np.array(path[lo : hi + 1])]
 
 
 # ------------------------------------------------------------------ the plan
@@ -410,8 +438,14 @@ def point_tokens(xy: np.ndarray) -> list[str]:
     return [t for x, y in np.clip(np.round(xy), 0, GRID - 1).astype(int) for t in (f"x{x}", f"y{y}")]
 
 
-def plan_tokens(pose: Pose, head: list[np.ndarray], eyes: list[np.ndarray], pupils: list[Pupil | None],
-                nose: np.ndarray | None, mouth: np.ndarray) -> list[str]:
+def plan_tokens(
+    pose: Pose,
+    head: list[np.ndarray],
+    eyes: list[np.ndarray],
+    pupils: list[Pupil | None],
+    nose: np.ndarray | None,
+    mouth: np.ndarray,
+) -> list[str]:
     """The plan as words: the pose's three angles in ANGLE_BINS bins over -90..90 degrees; each outline opened by its
     kind and closed by [end], every point as two grid words (x, y on the 256 grid); a pupil as its centre, two radii
     (whole pixels, at most 63) and its angle. Missing parts are left out."""
@@ -422,8 +456,12 @@ def plan_tokens(pose: Pose, head: list[np.ndarray], eyes: list[np.ndarray], pupi
         words += ["[eye]"] + point_tokens(eye) + ["[end]"]
     for p in pupils:
         if p is not None:
-            words += (["[pupil]"] + point_tokens(p.centre[None]) + [f"r{int(min(r, 63))}" for r in p.radii[:2]]
-                      + [angle_token(np.degrees(p.angle) % 180 - 90)])
+            words += (
+                ["[pupil]"]
+                + point_tokens(p.centre[None])
+                + [f"r{int(min(r, 63))}" for r in p.radii[:2]]
+                + [angle_token(np.degrees(p.angle) % 180 - 90)]
+            )
     if nose is not None:
         words += ["[nose]"] + point_tokens(nose) + ["[end]"]
     if len(mouth):
@@ -436,11 +474,11 @@ class SketchPlan:
     """One cat's sketch plan on the 256 grid (see the module docstring)."""
 
     pose: Pose
-    head: list[np.ndarray]           # runs (n, 3): x, y, in an ear
-    eyes: list[np.ndarray]           # (EYE_POINTS, 2) each
-    pupils: list[Pupil | None]       # one per eye
-    nose: np.ndarray | None          # (NOSE_POINTS, 2)
-    mouth: np.ndarray                # (n, 2), possibly empty
+    head: list[np.ndarray]  # runs (n, 3): x, y, in an ear
+    eyes: list[np.ndarray]  # (EYE_POINTS, 2) each
+    pupils: list[Pupil | None]  # one per eye
+    nose: np.ndarray | None  # (NOSE_POINTS, 2)
+    mouth: np.ndarray  # (n, 2), possibly empty
     tokens: list[str]
 
 
@@ -466,12 +504,23 @@ def save_plan(path: Path | str, plan: SketchPlan) -> None:
     path = Path(path)
     pose = plan.pose
     pupils = [p.as_row() if p is not None else np.full(6, np.nan) for p in plan.pupils]
-    head = np.empty(len(plan.head), dtype=object)                      # 1-D even when the runs have equal lengths
+    head = np.empty(len(plan.head), dtype=object)  # 1-D even when the runs have equal lengths
     for i, run in enumerate(plan.head):
         head[i] = run
     tmp = path.with_suffix(".tmp.npz")
-    np.savez_compressed(tmp, yaw=pose.yaw, pitch=pose.pitch, roll=pose.roll, residual=pose.residual, R=pose.R,
-                        head=head, eyes=np.array(plan.eyes), pupils=np.array(pupils),
-                        nose=plan.nose if plan.nose is not None else np.zeros((0, 2)), mouth=plan.mouth,
-                        tokens=np.array(plan.tokens), version=np.array(PLAN_VERSION))
+    np.savez_compressed(
+        tmp,
+        yaw=pose.yaw,
+        pitch=pose.pitch,
+        roll=pose.roll,
+        residual=pose.residual,
+        R=pose.R,
+        head=head,
+        eyes=np.array(plan.eyes),
+        pupils=np.array(pupils),
+        nose=plan.nose if plan.nose is not None else np.zeros((0, 2)),
+        mouth=plan.mouth,
+        tokens=np.array(plan.tokens),
+        version=np.array(PLAN_VERSION),
+    )
     tmp.rename(path)

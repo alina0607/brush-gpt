@@ -29,8 +29,29 @@ from brushgpt.painter import (
 )
 
 REAL_CATS = ("afhq__flickr_cat_000014", "cat__CAT_DATASET_01__CAT_00__00000001_017")
-FIT_LAYERS = [(1, 0), (1, 1), (2, 0), (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (3, 0), (4, 0), (5, 0), (6, 0), (6, 1),
-              (7, 0), (7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7)]
+FIT_LAYERS = [
+    (1, 0),
+    (1, 1),
+    (2, 0),
+    (2, 1),
+    (2, 2),
+    (2, 3),
+    (2, 4),
+    (2, 5),
+    (3, 0),
+    (4, 0),
+    (5, 0),
+    (6, 0),
+    (6, 1),
+    (7, 0),
+    (7, 1),
+    (7, 2),
+    (7, 3),
+    (7, 4),
+    (7, 5),
+    (7, 6),
+    (7, 7),
+]
 
 
 def reference(module: str):
@@ -47,8 +68,9 @@ def reference(module: str):
 def strokes(n: int, x: float, seed: int = 0) -> StrokeParams:
     g = torch.Generator().manual_seed(seed)
     xy = torch.stack([torch.full((n,), x), 100 + 300 * torch.rand(n, generator=g)], -1)
-    return StrokeParams(xy, torch.full((n, 2), 10.0), torch.rand(n, generator=g), torch.rand(n, 3, generator=g),
-                        torch.full((n,), 0.9))
+    return StrokeParams(
+        xy, torch.full((n, 2), 10.0), torch.rand(n, generator=g), torch.rand(n, 3, generator=g), torch.full((n,), 0.9)
+    )
 
 
 @pytest.fixture(scope="module")
@@ -70,20 +92,23 @@ def test_the_stage_table_has_seven_stages_of_known_brushes():
 def test_stage_two_is_saved_by_layer_and_replayed_one_eye_at_a_time():
     points = np.array([[150.0, 200.0], [350.0, 200.0]])
     iris, lids = STAGES[EYE_STAGE][1], STAGES[EYE_STAGE][4]
-    layers = [(EYE_STAGE, 1, strokes(3, 150), iris), (EYE_STAGE, 4, strokes(2, 140, 1), lids),
-              (EYE_STAGE, 1, strokes(4, 360, 2), iris)]
+    layers = [
+        (EYE_STAGE, 1, strokes(3, 150), iris),
+        (EYE_STAGE, 4, strokes(2, 140, 1), lids),
+        (EYE_STAGE, 1, strokes(4, 360, 2), iris),
+    ]
     canvas = torch.rand(512, 512, 3)
     arrays = stage_arrays(StageResult(EYE_STAGE, canvas, canvas, layers, 0.0), points)
     assert arrays["canvas"].dtype == np.float32 and arrays["1_xy"].shape == (7, 2) and arrays["4_xy"].shape == (2, 2)
     assert arrays["1_side"].tolist() == [0, 0, 0, 1, 1, 1, 1] and arrays["1_side"].dtype == np.int8
     assert str(arrays["1_kind"]) == "wet" and str(arrays["4_kind"]) == "liner" and "0_xy" not in arrays
     order = [(j, len(p.xy)) for _, j, p in stage_layers(arrays, EYE_STAGE)]
-    assert order == [(1, 3), (4, 2), (1, 4)]                     # the left eye's layers, then the right's
+    assert order == [(1, 3), (4, 2), (1, 4)]  # the left eye's layers, then the right's
 
 
 def test_fitting_a_layer_brings_the_canvas_closer_to_the_photo(synthetic):
     _, cat = synthetic
-    st = STAGES[6][0]                                             # the nose
+    st = STAGES[6][0]  # the nose
     white = torch.ones(512, 512, 3)
     p, out, st2 = fit_stage(st, cat, white, np.random.default_rng(0), iters=30)
     nose = torch.from_numpy(cat["nose"])
@@ -91,7 +116,7 @@ def test_fitting_a_layer_brings_the_canvas_closer_to_the_photo(synthetic):
     assert (out - cat["target"]).abs()[nose].mean() < 0.7 * before
     assert len(p.xy) == st2.n == st.n and all(torch.isfinite(t).all() for t in p)
     far = torch.from_numpy(~ndimage.binary_dilation(cat["nose"], iterations=10))
-    assert float((out - white).abs()[far].mean()) < 0.01           # outside its part a layer changes little
+    assert float((out - white).abs()[far].mean()) < 0.01  # outside its part a layer changes little
 
 
 def test_a_painting_is_saved_in_seven_stages_and_replays_to_its_canvas(synthetic, tmp_path, monkeypatch):
@@ -113,8 +138,10 @@ def test_a_painting_is_saved_in_seven_stages_and_replays_to_its_canvas(synthetic
 def test_eye_versions_repaint_only_the_eyes(synthetic, monkeypatch):
     inputs, cat = synthetic
     monkeypatch.setattr(painter, "ITERS", 1)
-    blue = {**cat, "target": torch.where(torch.from_numpy(cat["eye"])[..., None], torch.tensor([0.3, 0.45, 0.85]),
-                                         cat["target"])}
+    blue = {
+        **cat,
+        "target": torch.where(torch.from_numpy(cat["eye"])[..., None], torch.tensor([0.3, 0.45, 0.85]), cat["target"]),
+    }
     whole, layers = paint_apart(cat, inputs)
     (first, first_layers), (other, other_layers) = paint_eye_versions([cat, blue], inputs)
     assert torch.equal(first, whole)

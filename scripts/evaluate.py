@@ -64,8 +64,11 @@ def main() -> None:
     ap.add_argument("--threads", type=int, default=3)
     ap.add_argument("--out", help="the JSON (default: next to the samples)")
     a = ap.parse_args()
-    need = {"whole": ("whole_data", "coat_features", "coat_colours", "coat_labels"), "alone": ("eye_data",),
-            "system": ("whole_data", "eye_data", "ckpt")}[a.mode]
+    need = {
+        "whole": ("whole_data", "coat_features", "coat_colours", "coat_labels"),
+        "alone": ("eye_data",),
+        "system": ("whole_data", "eye_data", "ckpt"),
+    }[a.mode]
     missing = [n for n in need if getattr(a, n) is None]
     if missing:
         ap.error(f"{a.mode} needs " + ", ".join("--" + n.replace("_", "-") for n in missing))
@@ -79,8 +82,10 @@ def main() -> None:
     if a.mode == "whole":
         tokens, rows = read_whole_samples(a.samples)
         reader = CoatReader(a.coat_features, a.coat_colours, a.coat_labels)
-        res = {"samples": a.samples, **measure_whole_face(tokens, rows, WholeFaceData(a.whole_data), views, reader,
-                                                          log)}
+        res = {
+            "samples": a.samples,
+            **measure_whole_face(tokens, rows, WholeFaceData(a.whole_data), views, reader, log),
+        }
         summary = {k: v for k, v in res.items() if k != "rows"}
     elif a.mode == "alone":
         res, pics = measure_eyes_alone(np.load(a.samples), np.load(a.eye_data), sources, views, a.n_cats)
@@ -88,9 +93,20 @@ def main() -> None:
     else:
         tokens, rows = read_whole_samples(a.samples)
         model = load_checkpoint(a.ckpt, resolve_device(a.device))
-        res, pics = measure_system(tokens, rows, WholeFaceData(a.whole_data), model, EyeData(a.eye_data),
-                                   load_eye_ranges(a.eye_data), views, a.guidance, a.temperature, a.max_new,
-                                   a.n_cats, a.seed)
+        res, pics = measure_system(
+            tokens,
+            rows,
+            WholeFaceData(a.whole_data),
+            model,
+            EyeData(a.eye_data),
+            load_eye_ranges(a.eye_data),
+            views,
+            a.guidance,
+            a.temperature,
+            a.max_new,
+            a.n_cats,
+            a.seed,
+        )
         summary = res["summary"]
     out.write_text(json.dumps(res, indent=1))
     if pics:

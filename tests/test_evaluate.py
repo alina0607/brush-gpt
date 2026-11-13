@@ -35,8 +35,10 @@ NAMES = ["cat0", "cat1", "cat2"]
 
 
 def every_coat(images):
-    return [{"base": {"label": "brown", "confident": True}, "pattern": {"label": "tabby", "confident": True}}
-            for _ in images]
+    return [
+        {"base": {"label": "brown", "confident": True}, "pattern": {"label": "tabby", "confident": True}}
+        for _ in images
+    ]
 
 
 @pytest.fixture(scope="module")
@@ -54,11 +56,16 @@ def own_samples(eye_data: Path) -> EyeSamples:
     """The held eyes' own bodies as if a model had sampled them."""
     z = np.load(eye_data)
     rows = np.flatnonzero((z["split"][z["cat_id"]] == "held") & (z["version"] == "A"))
-    bodies = [z["tokens"][r, PREFIX:z["lengths"][r]] for r in rows]
+    bodies = [z["tokens"][r, PREFIX : z["lengths"][r]] for r in rows]
     width = max(map(len, bodies))
-    return EyeSamples(rows, z["tokens"][rows, :PREFIX].astype(np.int64),
-                      np.stack([np.pad(b, (0, width - len(b)), constant_values=3) for b in bodies]).astype(np.int64),
-                      1.0, 1.0, 0)
+    return EyeSamples(
+        rows,
+        z["tokens"][rows, :PREFIX].astype(np.int64),
+        np.stack([np.pad(b, (0, width - len(b)), constant_values=3) for b in bodies]).astype(np.int64),
+        1.0,
+        1.0,
+        0,
+    )
 
 
 # ------------------------------------------------------------------ unit tests
@@ -70,6 +77,7 @@ def test_eye_measures_on_a_drawn_eye():
     canvas[226:254, 195:205] = 0.0
     xy = torch.tensor([[200.0, 240.0], [210.0, 245.0], [300.0, 300.0]])
     from brushgpt.brushes import StrokeParams
+
     p = StrokeParams(xy, torch.ones(3, 2), torch.zeros(3), torch.zeros(3, 3), torch.ones(3))
     m = eye_measures(canvas, [(0, p)], outline, pupil)
     assert m["strokes"] == 3 and m["inside"] == pytest.approx(2 / 3) and m["pupil_contrast"] > 0.8
@@ -77,11 +85,17 @@ def test_eye_measures_on_a_drawn_eye():
 
 
 def test_eye_summary_counts_only_asked_colours():
-    rows = [{"asked": ["green", "unclear"], "names": {"m": ["green", "blue"]},
-             "eyes": {"m": [{"strokes": 10, "inside": 0.5, "pupil_contrast": 0.1}]}},
-            {"asked": ["blue", "copper"], "names": {"m": ["unclear", "copper"]}, "eyes": {}}]
-    assert eye_summary(rows, ["m"]) == {"m": {"read_right": "2/3", "read_unclear": 1, "strokes": 10.0,
-                                              "inside": 0.5, "pupil_contrast": 0.1}}
+    rows = [
+        {
+            "asked": ["green", "unclear"],
+            "names": {"m": ["green", "blue"]},
+            "eyes": {"m": [{"strokes": 10, "inside": 0.5, "pupil_contrast": 0.1}]},
+        },
+        {"asked": ["blue", "copper"], "names": {"m": ["unclear", "copper"]}, "eyes": {}},
+    ]
+    assert eye_summary(rows, ["m"]) == {
+        "m": {"read_right": "2/3", "read_unclear": 1, "strokes": 10.0, "inside": 0.5, "pupil_contrast": 0.1}
+    }
 
 
 def test_plan_is_read_back_from_the_whole_face_tokens(synthetic):
@@ -91,8 +105,10 @@ def test_plan_is_read_back_from_the_whole_face_tokens(synthetic):
     toks, _ = plan_tokens(plan, False, vocab)
     outlines, pupils = plan_from_tokens(toks, vocab)
     assert len(outlines) == 2 and all(len(o) == 16 for o in outlines) and all(len(p) == 6 for p in pupils)
-    assert np.allclose(sorted(o[:, 0].mean() for o in outlines),
-                       sorted(on_plan_grid(np.asarray(e, float))[:, 0].mean() for e in plan["eyes"]))
+    assert np.allclose(
+        sorted(o[:, 0].mean() for o in outlines),
+        sorted(on_plan_grid(np.asarray(e, float))[:, 0].mean() for e in plan["eyes"]),
+    )
 
 
 def test_the_whole_face_measure_on_the_painters_own_tokens(synthetic):
@@ -100,7 +116,7 @@ def test_the_whole_face_measure_on_the_painters_own_tokens(synthetic):
     data = WholeFaceData(root / "whole" / "data.npz")
     rows = np.array([0, 1, 2])
     tokens = np.load(root / "whole" / "data.npz")["tokens"][rows]
-    sampled = np.c_[tokens, np.full(3, -1)]                     # a sampled painting ends with EOS
+    sampled = np.c_[tokens, np.full(3, -1)]  # a sampled painting ends with EOS
     sampled[np.arange(3), (tokens >= 0).sum(1)] = data.vocab.ids["EOS"]
     res = measure_whole_face(sampled, rows, data, CatViews(sources), every_coat)
     assert res["n"] == 3 and res["gen_ends_with_eos"] == "3/3"
@@ -123,9 +139,17 @@ def test_the_system_measure_repaints_both_eyes(synthetic):
     torch.manual_seed(0)
     model = GPT(model_config(eye_data, 32, 1, 4, 0.0)).eval()
     whole = np.load(root / "whole" / "data.npz")
-    res, pics = measure_system(whole["tokens"][[2]], np.array([2]), WholeFaceData(root / "whole" / "data.npz"),
-                               model, eye_data, load_eye_ranges(root / "eyes" / "data.npz"), CatViews(sources),
-                               guidance=2.0, max_new=60)
+    res, pics = measure_system(
+        whole["tokens"][[2]],
+        np.array([2]),
+        WholeFaceData(root / "whole" / "data.npz"),
+        model,
+        eye_data,
+        load_eye_ranges(root / "eyes" / "data.npz"),
+        CatViews(sources),
+        guidance=2.0,
+        max_new=60,
+    )
     (row,) = res["rows"]
     assert row["cat"] == "cat2" and set(row["names"]) == {"whole-face model", "whole + eye model"}
     assert res["summary"]["plan_not_two_outlines"] == 0 and len(row["eyes"]["whole + eye model"]) == 2
@@ -141,13 +165,25 @@ def test_the_script_measures_eyes_alone(synthetic, tmp_path, monkeypatch):
     root, sources = synthetic
     write_cat_table(list(sources.values()), tmp_path / "cats.csv")
     own_samples(root / "eyes" / "data.npz").save(tmp_path / "s.npz")
-    monkeypatch.setattr(sys, "argv", ["evaluate.py", "alone", str(tmp_path / "s.npz"), "--eye-data",
-                                      str(root / "eyes" / "data.npz"), "--cats", str(tmp_path / "cats.csv"),
-                                      "--paintings", str(root / "paintings")])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "evaluate.py",
+            "alone",
+            str(tmp_path / "s.npz"),
+            "--eye-data",
+            str(root / "eyes" / "data.npz"),
+            "--cats",
+            str(tmp_path / "cats.csv"),
+            "--paintings",
+            str(root / "paintings"),
+        ],
+    )
     runpy.run_path(str(SCRIPT), run_name="__main__")
     res = json.loads((tmp_path / "s.alone.json").read_text())
-    assert res["summary"]["eye model"]["strokes"] <= res["summary"]["painter"]["strokes"]   # strokes off the frame
-    assert [r["cat"] for r in res["rows"]] == ["cat2"]                                          # are not written
+    assert res["summary"]["eye model"]["strokes"] <= res["summary"]["painter"]["strokes"]  # strokes off the frame
+    assert [r["cat"] for r in res["rows"]] == ["cat2"]  # are not written
     assert (tmp_path / "s.alone.png").exists()
 
 
@@ -165,8 +201,13 @@ def real():
     reference("paint_stages")
     root = ml_root()
     e1, part = root / "runs/eyegpt/E1", root / "data/kaggle/gen_cfg/out/out/part"
-    files = [e1 / "eyes_g2.npz", e1 / "best.pt", part / "gen_g2.0.npz", root / "data/processed/eye_1110/data.npz",
-             root / "data/processed/edit_1110_part/data.npz"]
+    files = [
+        e1 / "eyes_g2.npz",
+        e1 / "best.pt",
+        part / "gen_g2.0.npz",
+        root / "data/processed/eye_1110/data.npz",
+        root / "data/processed/edit_1110_part/data.npz",
+    ]
     if not all(f.exists() for f in files):
         pytest.skip("the final runs' samples or data are not there")
     torch.set_num_threads(3)
@@ -189,8 +230,9 @@ def whole_samples(part: Path, g: int) -> tuple[np.ndarray, np.ndarray]:
 @pytest.mark.parametrize("samples, n", [("eyes_g2", 2), ("eyes_g2_blue", 1)])
 def test_eye_alone_reproduces_the_final_measures(real, samples, n):
     root, e1, _, sources, views = real
-    res, _ = measure_eyes_alone(np.load(e1 / f"{samples}.npz"), np.load(root / "data/processed/eye_1110/data.npz"),
-                                sources, views, n)
+    res, _ = measure_eyes_alone(
+        np.load(e1 / f"{samples}.npz"), np.load(root / "data/processed/eye_1110/data.npz"), sources, views, n
+    )
     want = json.loads((e1 / f"{samples}.alone.json").read_text())
     assert same_rows(res["rows"], want["rows"][:n])
 
@@ -199,10 +241,19 @@ def test_system_reproduces_the_final_measures(real):
     root, e1, part, _, views = real
     tokens, rows = whole_samples(part, 2)
     from brushgpt.eye_model import load_checkpoint
+
     eye_path = root / "data/processed/eye_1110/data.npz"
-    res, _ = measure_system(tokens, rows, WholeFaceData(root / "data/processed/edit_1110_part/data.npz"),
-                            load_checkpoint(e1 / "best.pt"), EyeData(eye_path), load_eye_ranges(eye_path), views,
-                            guidance=2.0, n_cats=2)
+    res, _ = measure_system(
+        tokens,
+        rows,
+        WholeFaceData(root / "data/processed/edit_1110_part/data.npz"),
+        load_checkpoint(e1 / "best.pt"),
+        EyeData(eye_path),
+        load_eye_ranges(eye_path),
+        views,
+        guidance=2.0,
+        n_cats=2,
+    )
     want = json.loads((e1 / "system_whole_g2_eye_g2.json").read_text())
     assert same_rows(res["rows"], want["rows"][:2])
 
@@ -211,6 +262,7 @@ def test_whole_face_measure_reproduces_the_final_measures(real):
     pytest.importorskip("transformers")
     pytest.importorskip("sklearn")
     from brushgpt.attributes import CoatReader
+
     root, _, part, _, views = real
     CL = reference("coat_label")
     try:
@@ -218,7 +270,8 @@ def test_whole_face_measure_reproduces_the_final_measures(real):
     except OSError:
         pytest.skip("the CLIP weights are not in the local cache")
     tokens, rows = whole_samples(part, 2)
-    res = measure_whole_face(tokens[:2], rows[:2], WholeFaceData(root / "data/processed/edit_1110_part/data.npz"),
-                             views, reader)
+    res = measure_whole_face(
+        tokens[:2], rows[:2], WholeFaceData(root / "data/processed/edit_1110_part/data.npz"), views, reader
+    )
     want = json.loads((part / "gen_g2.0.measure.json").read_text())
     assert same_rows(res["rows"], want["rows"][:2])

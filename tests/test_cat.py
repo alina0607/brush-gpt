@@ -58,7 +58,7 @@ def test_face_frame_puts_the_eyes_on_the_x_axis_and_the_mouth_below():
 
 
 def test_eye_side_splits_by_the_nearer_eye():
-    points = np.array([[300.0, 200.0], [200.0, 200.0]])          # listed right eye first
+    points = np.array([[300.0, 200.0], [200.0, 200.0]])  # listed right eye first
     xy = np.array([[190.0, 210.0], [310.0, 190.0], [249.0, 0.0]])
     assert eye_side(xy, points).tolist() == [0, 1, 0]
 
@@ -101,9 +101,12 @@ def test_one_eye_keeps_only_that_eyes_parts(synthetic):
 def test_changing_an_eye_changes_nothing_the_other_stages_see(synthetic):
     inputs, cat = synthetic
     blue_eye = (0.3, 0.45, 0.85)
-    inside = cat["eye"]                                           # an edit of the eyes' colour, as recolouring does
-    edited = {**cat, "target": torch.where(torch.from_numpy(inside)[..., None], torch.tensor(blue_eye), cat["target"]),
-              "photo": np.where(inside[..., None], np.float32(blue_eye), cat["photo"]).astype(np.float32)}
+    inside = cat["eye"]  # an edit of the eyes' colour, as recolouring does
+    edited = {
+        **cat,
+        "target": torch.where(torch.from_numpy(inside)[..., None], torch.tensor(blue_eye), cat["target"]),
+        "photo": np.where(inside[..., None], np.float32(blue_eye), cat["photo"]).astype(np.float32),
+    }
     small = np.asarray(Image.fromarray(inside.astype(np.uint8) * 255).resize((256, 256), Image.BOX)) == 255
     edited_inputs = dataclasses.replace(inputs, target=np.where(small[..., None], np.uint8(200), inputs.target))
     seen, seen_edited = without_eyes(cat, inputs), without_eyes(edited, edited_inputs)
@@ -126,7 +129,7 @@ def real_inputs(name: str):
 def test_prepared_cat_matches_the_reference(name):
     PS, inputs = real_inputs(name)
     ref, mine = PS.load_cat(name), prepare_cat(inputs)
-    assert set(ref) - set(mine) == {"texture", "pads", "ear_roots"}    # used only by layers the painter dropped
+    assert set(ref) - set(mine) == {"texture", "pads", "ear_roots"}  # used only by layers the painter dropped
     for key in mine:
         assert same(ref[key], mine[key]), key
     ref_seen, mine_seen = PS.without_eyes(name, ref), without_eyes(mine, inputs)

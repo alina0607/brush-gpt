@@ -45,19 +45,26 @@ from .painter import EYE_STAGE, SIDE, STAGES, replay
 # bins
 NXY, NANGLE, NSIZE, NRGB, NALPHA = 256, 32, 6, 12, 8
 FIELDS = ("x", "y", "angle", "size", "paint")
-SIZES = {"x": NXY, "y": NXY, "angle": NANGLE, "size": NSIZE * NSIZE, "paint": NRGB ** 3 * NALPHA}
-LAYERS = [(k, j) for k in sorted(STAGES) for j in range(len(STAGES[k]))]          # (stage, layer), 21
+SIZES = {"x": NXY, "y": NXY, "angle": NANGLE, "size": NSIZE * NSIZE, "paint": NRGB**3 * NALPHA}
+LAYERS = [(k, j) for k in sorted(STAGES) for j in range(len(STAGES[k]))]  # (stage, layer), 21
 TASKS = ("gen", "eyes", "coat")
 
 # part order
 PARTS = ("ear L", "ear R", "forehead", "eye L", "eye R", "nose", "cheek L", "cheek R", "mouth", "chin")
-PART_ROW = 32                   # px: inside a part, strokes go in serpentine rows this tall
-CHAIN_LAYERS = {(7, 0), (7, 1), (7, 2)}   # ear back, ear fill, ear rim: chains along the ear, kept in painting order
+PART_ROW = 32  # px: inside a part, strokes go in serpentine rows this tall
+CHAIN_LAYERS = {(7, 0), (7, 1), (7, 2)}  # ear back, ear fill, ear rim: chains along the ear, kept in painting order
 # part anchors outside the ears: (from which point, eye distances towards the mouth, half eye distances sideways)
-ANCHORS = {"forehead": ("mid", -0.9, 0.0), "eye L": ("eye L", 0.0, 0.0), "eye R": ("eye R", 0.0, 0.0),
-           "nose": ("mid", 0.55, 0.0), "cheek L": ("eye L", 0.9, -0.6), "cheek R": ("eye R", 0.9, 0.6),
-           "mouth": ("mouth", 0.0, 0.0), "chin": ("mouth", 0.6, 0.0)}
-EAR_POINTS = ((3, 4, 5), (6, 7, 8))       # each ear's face points
+ANCHORS = {
+    "forehead": ("mid", -0.9, 0.0),
+    "eye L": ("eye L", 0.0, 0.0),
+    "eye R": ("eye R", 0.0, 0.0),
+    "nose": ("mid", 0.55, 0.0),
+    "cheek L": ("eye L", 0.9, -0.6),
+    "cheek R": ("eye R", 0.9, 0.6),
+    "mouth": ("mouth", 0.0, 0.0),
+    "chin": ("mouth", 0.6, 0.0),
+}
+EAR_POINTS = ((3, 4, 5), (6, 7, 8))  # each ear's face points
 
 # sketch plan
 POSE_BINS = 16
@@ -66,18 +73,24 @@ PUPIL_POINTS = 6
 
 # palette
 PALETTE_K = 16
-PALETTE_SLOTS = PALETTE_K + NRGB ** 3
+PALETTE_SLOTS = PALETTE_K + NRGB**3
 LUMA = np.array([0.299, 0.587, 0.114])
 
-BASE_SPECIALS = (["BOS", "EOS", "SEP", "EYE_L", "EYE_R"] + [f"LAYER{i}" for i in range(len(LAYERS))]
-                 + [f"COND_{n}" for n in EYE_COLOURS] + [f"COND_BASE_{n}" for n in (UNCLEAR, *COAT_BASES)]
-                 + [f"COND_PAT_{n}" for n in (UNCLEAR, *COAT_PATTERNS)] + [f"TASK_{k.upper()}" for k in TASKS])
+BASE_SPECIALS = (
+    ["BOS", "EOS", "SEP", "EYE_L", "EYE_R"]
+    + [f"LAYER{i}" for i in range(len(LAYERS))]
+    + [f"COND_{n}" for n in EYE_COLOURS]
+    + [f"COND_BASE_{n}" for n in (UNCLEAR, *COAT_BASES)]
+    + [f"COND_PAT_{n}" for n in (UNCLEAR, *COAT_PATTERNS)]
+    + [f"TASK_{k.upper()}" for k in TASKS]
+)
 PART_SPECIALS = [f"PART_{p.replace(' ', '_').upper()}" for p in PARTS]
-PLAN_SPECIALS = (["PLAN_POSE"] + [f"POSE_{k}" for k in range(POSE_BINS)] + [f"PLAN_{r}" for r in PLAN_RUNS]
-                 + ["PLAN_END"])
+PLAN_SPECIALS = (
+    ["PLAN_POSE"] + [f"POSE_{k}" for k in range(POSE_BINS)] + [f"PLAN_{r}" for r in PLAN_RUNS] + ["PLAN_END"]
+)
 PALETTE_SPECIALS = ["PAL_ALL"]
 
-PaintedLayer = tuple[int, int, StrokeParams, "int | None"]   # (stage, layer j, strokes, eye side or None)
+PaintedLayer = tuple[int, int, StrokeParams, "int | None"]  # (stage, layer j, strokes, eye side or None)
 Ranges = dict[tuple[int, int], tuple[np.ndarray, np.ndarray]]  # per layer: lowest and highest (length, width, opacity)
 
 
@@ -93,8 +106,14 @@ class Vocabulary:
     def build(cls, part_order: bool = False, plan: bool = False, palette: bool = False) -> Vocabulary:
         """The base specials, then the part markers, the plan's tokens and the palette marker when asked (appended,
         so the condition and task ids are the same in every build)."""
-        return cls(tuple(BASE_SPECIALS + (PART_SPECIALS if part_order else []) + (PLAN_SPECIALS if plan else [])
-                         + (PALETTE_SPECIALS if palette else [])))
+        return cls(
+            tuple(
+                BASE_SPECIALS
+                + (PART_SPECIALS if part_order else [])
+                + (PLAN_SPECIALS if plan else [])
+                + (PALETTE_SPECIALS if palette else [])
+            )
+        )
 
     @cached_property
     def ids(self) -> dict[str, int]:
@@ -116,7 +135,7 @@ class Vocabulary:
     def field_sizes(self) -> dict[str, int]:
         if not self.has_palette:
             return dict(SIZES)
-        return {**SIZES, "paint": PALETTE_SLOTS * NALPHA, "colour": NRGB ** 3}
+        return {**SIZES, "paint": PALETTE_SLOTS * NALPHA, "colour": NRGB**3}
 
     @property
     def field_names(self) -> list[str]:
@@ -143,8 +162,12 @@ class Vocabulary:
     def condition(self, names: list[str]) -> list[int]:
         """Condition token ids of attribute names (left eye, right eye, base coat, coat pattern)."""
         left, right, base, pattern = names
-        return [self.ids[f"COND_{left}"], self.ids[f"COND_{right}"], self.ids[f"COND_BASE_{base}"],
-                self.ids[f"COND_PAT_{pattern}"]]
+        return [
+            self.ids[f"COND_{left}"],
+            self.ids[f"COND_{right}"],
+            self.ids[f"COND_BASE_{base}"],
+            self.ids[f"COND_PAT_{pattern}"],
+        ]
 
     def condition_names(self, ids: list[int]) -> list[str]:
         """condition() backwards."""
@@ -186,7 +209,7 @@ def colour_bins(rgb: np.ndarray) -> np.ndarray:
 def bin_colours(ids: np.ndarray) -> np.ndarray:
     """Each colour bin's centre colour."""
     ids = np.asarray(ids)
-    return (np.stack([ids // NRGB ** 2, (ids // NRGB) % NRGB, ids % NRGB], 1) + 0.5) / NRGB
+    return (np.stack([ids // NRGB**2, (ids // NRGB) % NRGB, ids % NRGB], 1) + 0.5) / NRGB
 
 
 # ------------------------------------------------------------------ strokes
@@ -223,14 +246,26 @@ def decode_strokes(raw: np.ndarray, layer: tuple[int, int], ranges: Ranges) -> S
     r = np.asarray(raw, np.int64).reshape(-1, 5)
     x, y = bin_value(r[:, 0], 0, SIDE, NXY), bin_value(r[:, 1], 0, SIDE, NXY)
     ang = bin_value(r[:, 2], 0, 2 * np.pi, NANGLE)
-    lw = np.stack([bin_value(r[:, 3] // NSIZE, lo[0], hi[0], NSIZE, True),
-                   bin_value(r[:, 3] % NSIZE, lo[1], hi[1], NSIZE, True)], 1)
+    lw = np.stack(
+        [bin_value(r[:, 3] // NSIZE, lo[0], hi[0], NSIZE, True), bin_value(r[:, 3] % NSIZE, lo[1], hi[1], NSIZE, True)],
+        1,
+    )
     al = r[:, 4] % NALPHA
     c = r[:, 4] // NALPHA
-    col = np.stack([bin_value(c // (NRGB * NRGB), 0, 1, NRGB), bin_value((c // NRGB) % NRGB, 0, 1, NRGB),
-                    bin_value(c % NRGB, 0, 1, NRGB)], 1)
-    return StrokeParams(*(torch.from_numpy(np.ascontiguousarray(v, np.float32)) for v in
-                          (np.stack([x, y], 1), lw, ang, col, bin_value(al, lo[2], hi[2], NALPHA))))
+    col = np.stack(
+        [
+            bin_value(c // (NRGB * NRGB), 0, 1, NRGB),
+            bin_value((c // NRGB) % NRGB, 0, 1, NRGB),
+            bin_value(c % NRGB, 0, 1, NRGB),
+        ],
+        1,
+    )
+    return StrokeParams(
+        *(
+            torch.from_numpy(np.ascontiguousarray(v, np.float32))
+            for v in (np.stack([x, y], 1), lw, ang, col, bin_value(al, lo[2], hi[2], NALPHA))
+        )
+    )
 
 
 # ------------------------------------------------------------------ palette
@@ -256,17 +291,22 @@ def palette_colours(rgb: np.ndarray, k: int) -> np.ndarray:
 def palette_of(layers: list[PaintedLayer]) -> Palette:
     """The palette of every stroke outside the eyes; each such stroke takes its nearest palette colour."""
     fur = [e for e, (st, *_) in enumerate(layers) if st != EYE_STAGE]
-    colours = palette_colours(np.concatenate([layers[e][2].colour.numpy() for e in fur] or [np.zeros((0, 3))]),
-                              PALETTE_K)
+    colours = palette_colours(
+        np.concatenate([layers[e][2].colour.numpy() for e in fur] or [np.zeros((0, 3))]), PALETTE_K
+    )
     own = bin_colours(colours)
-    return Palette(colours, [vq(p.colour.numpy().astype(np.float64), own)[0] if st != EYE_STAGE else None
-                             for st, _, p, _ in layers])
+    return Palette(
+        colours,
+        [vq(p.colour.numpy().astype(np.float64), own)[0] if st != EYE_STAGE else None for st, _, p, _ in layers],
+    )
 
 
 def palette_tokens(colours: np.ndarray, vocab: Vocabulary) -> tuple[np.ndarray, np.ndarray]:
     """The palette marker and its colours as colour tokens (field 6)."""
-    return (np.array([vocab.ids["PAL_ALL"]] + [int(c) + vocab.offsets["colour"] for c in colours], np.int32),
-            np.array([0] + [6] * len(colours), np.int8))
+    return (
+        np.array([vocab.ids["PAL_ALL"]] + [int(c) + vocab.offsets["colour"] for c in colours], np.int32),
+        np.array([0] + [6] * len(colours), np.int8),
+    )
 
 
 # ------------------------------------------------------------------ part order
@@ -283,9 +323,9 @@ def part_map(points: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
     ears = []
     for e, ear in enumerate(EAR_POINTS):
         one = points.copy()
-        one[list(EAR_POINTS[1 - e])] = one[list(ear)]      # both triangles this ear's: a mask of this ear alone
+        one[list(EAR_POINTS[1 - e])] = one[list(ear)]  # both triangles this ear's: a mask of this ear alone
         ears.append((points[list(ear), 0].mean(), ear_triangles(one, SIDE, k)))
-    ears.sort(key=lambda m: -m[0])                         # the right ear first, so the left ear wins an overlap
+    ears.sort(key=lambda m: -m[0])  # the right ear first, so the left ear wins an overlap
 
     def parts(xy: np.ndarray) -> np.ndarray:
         out = names[np.argmin(((xy[:, None] - at[None]) ** 2).sum(-1), 1)]
@@ -293,6 +333,7 @@ def part_map(points: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
         for name, (_, mask) in zip(("ear R", "ear L"), ears, strict=True):
             out[mask[ix[:, 1], ix[:, 0]]] = name
         return out
+
     return parts
 
 
@@ -317,8 +358,9 @@ def around(xy: np.ndarray, centre: np.ndarray) -> np.ndarray:
     return np.lexsort((np.hypot(d[:, 0], d[:, 1]), np.arctan2(d[:, 0], -d[:, 1]) % (2 * np.pi)))
 
 
-def part_runs(layers: list[PaintedLayer], parts: Callable[[np.ndarray], np.ndarray]
-              ) -> dict[str, list[tuple[int, np.ndarray]]]:
+def part_runs(
+    layers: list[PaintedLayer], parts: Callable[[np.ndarray], np.ndarray]
+) -> dict[str, list[tuple[int, np.ndarray]]]:
     """For each part, its (layer index, stroke indices in writing order)."""
     runs: dict[str, list[tuple[int, np.ndarray]]] = {}
     centre = eye_centres(layers)
@@ -334,8 +376,9 @@ def part_runs(layers: list[PaintedLayer], parts: Callable[[np.ndarray], np.ndarr
     return runs
 
 
-def run_tokens(layers: list[PaintedLayer], e: int, k: np.ndarray, ranges: Ranges, vocab: Vocabulary,
-               pal: Palette | None) -> tuple[np.ndarray, np.ndarray]:
+def run_tokens(
+    layers: list[PaintedLayer], e: int, k: np.ndarray, ranges: Ranges, vocab: Vocabulary, pal: Palette | None
+) -> tuple[np.ndarray, np.ndarray]:
     """Strokes k of layer e as its LAYER marker and strokes; with a palette, each paint token becomes slot x
     opacity (the palette slot, or for an eye layer PALETTE_K + its colour bin)."""
     st, j, p, _ = layers[e]
@@ -348,8 +391,13 @@ def run_tokens(layers: list[PaintedLayer], e: int, k: np.ndarray, ranges: Ranges
     return t, f
 
 
-def part_tokens(layers: list[PaintedLayer], parts: Callable[[np.ndarray], np.ndarray], ranges: Ranges,
-                vocab: Vocabulary, pal: Palette | None = None) -> tuple[np.ndarray, np.ndarray]:
+def part_tokens(
+    layers: list[PaintedLayer],
+    parts: Callable[[np.ndarray], np.ndarray],
+    ranges: Ranges,
+    vocab: Vocabulary,
+    pal: Palette | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """Layers in part order: each part (PARTS order) opens with its marker, then each layer that painted there in
     painting order, as its LAYER marker and its strokes there."""
     runs = part_runs(layers, parts)
@@ -398,8 +446,10 @@ def plan_tokens(plan: Mapping[str, np.ndarray], flip: bool, vocab: Vocabulary) -
     for q in sorted(pupils, key=lambda q: fx(q[0])):
         t = np.linspace(0, 2 * np.pi, PUPIL_POINTS, endpoint=False)
         c, s = np.cos(q[4]), np.sin(q[4])
-        run("PUPIL", q[:2] + np.c_[q[2] * np.cos(t) * c - q[3] * np.sin(t) * s,
-                                   q[2] * np.cos(t) * s + q[3] * np.sin(t) * c])
+        run(
+            "PUPIL",
+            q[:2] + np.c_[q[2] * np.cos(t) * c - q[3] * np.sin(t) * s, q[2] * np.cos(t) * s + q[3] * np.sin(t) * c],
+        )
     run("NOSE", np.asarray(plan["nose"], np.float64))
     run("MOUTH", np.asarray(plan["mouth"], np.float64)[::2])
     toks.append(ids["PLAN_END"])
@@ -408,9 +458,14 @@ def plan_tokens(plan: Mapping[str, np.ndarray], flip: bool, vocab: Vocabulary) -
 
 
 # ------------------------------------------------------------------ a whole painting
-def painting_tokens(layers: list[PaintedLayer], ranges: Ranges, vocab: Vocabulary,
-                    parts: Callable[[np.ndarray], np.ndarray] | None = None,
-                    plan: Mapping[str, np.ndarray] | None = None, flip: bool = False) -> tuple[np.ndarray, np.ndarray]:
+def painting_tokens(
+    layers: list[PaintedLayer],
+    ranges: Ranges,
+    vocab: Vocabulary,
+    parts: Callable[[np.ndarray], np.ndarray] | None = None,
+    plan: Mapping[str, np.ndarray] | None = None,
+    flip: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
     """One painting's tokens and fields in the vocabulary's format: the plan (when the vocabulary has one; `flip`
     for a mirrored painting), the palette (when it has one), then the strokes in part order (`parts`, the cat's
     part_map) or in layer order."""
@@ -451,7 +506,7 @@ def _is_stroke(block: np.ndarray, vocab: Vocabulary) -> bool:
 def _read_palette(toks: np.ndarray, i: int, vocab: Vocabulary, palette: dict[int, int]) -> int:
     """The colour tokens after the palette marker into `palette` (slot -> colour bin); returns the next index."""
     for m in range(PALETTE_K):
-        if i >= len(toks) or not 0 <= toks[i] - vocab.offsets["colour"] < NRGB ** 3:
+        if i >= len(toks) or not 0 <= toks[i] - vocab.offsets["colour"] < NRGB**3:
             break
         palette[m] = int(toks[i] - vocab.offsets["colour"])
         i += 1
@@ -495,15 +550,17 @@ def layers_from_tokens(toks: np.ndarray, ranges: Ranges, vocab: Vocabulary) -> l
             i += 1
             continue
         layer = state["layer"]
-        if state["inplan"] or layer is None or not _is_stroke(toks[i:i + 5], vocab):
+        if state["inplan"] or layer is None or not _is_stroke(toks[i : i + 5], vocab):
             i += 1
             continue
-        raw = _stroke_values(toks[i:i + 5], vocab, palette)
+        raw = _stroke_values(toks[i : i + 5], vocab, palette)
         i += 5
         if raw is not None:
             groups.setdefault((layer[0], state["side"] if layer[0] == EYE_STAGE else 0, layer[1]), []).append(raw)
-    return [(st, j, decode_strokes(np.stack(groups[(st, s, j)]), (st, j), ranges))
-            for st, s, j in sorted(k for k in groups if (k[0], k[2]) in ranges)]
+    return [
+        (st, j, decode_strokes(np.stack(groups[(st, s, j)]), (st, j), ranges))
+        for st, s, j in sorted(k for k in groups if (k[0], k[2]) in ranges)
+    ]
 
 
 def render(layers: list[tuple[int, int, StrokeParams]]) -> torch.Tensor:

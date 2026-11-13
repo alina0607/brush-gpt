@@ -31,8 +31,9 @@ from brushgpt.tokens import (
 from brushgpt.train import layout_from_specials
 
 FORMATS = [(False, False, False), (True, False, False), (False, True, False), (True, True, False), (True, True, True)]
-POINTS = np.array([[95, 120], [161, 120], [128, 182], [50, 95], [62, 28], [100, 72],
-                   [156, 72], [194, 28], [206, 95]], np.float64)
+POINTS = np.array(
+    [[95, 120], [161, 120], [128, 182], [50, 95], [62, 28], [100, 72], [156, 72], [194, 28], [206, 95]], np.float64
+)
 
 
 def synthetic_ranges() -> dict:
@@ -43,11 +44,16 @@ def synthetic_plan() -> dict:
     t = np.linspace(0, 2 * np.pi, 8, endpoint=False)
     eye = lambda cx: np.c_[cx + 15 * np.cos(t), 120 + 9 * np.sin(t)]  # noqa: E731
     head = np.c_[np.linspace(40, 220, 12), np.full(12, 60.0), (np.arange(12) % 6 < 2).astype(float)]
-    return {"yaw": np.float64(20.0), "pitch": np.float64(-5.0), "roll": np.float64(3.0), "head": [head],
-            "eyes": np.stack([eye(161), eye(95)]),
-            "pupils": np.array([[95, 120, 3, 8, 0.1, 0], [161, 120, 3, 8, 0, 0]]),
-            "nose": np.c_[128 + 8 * np.cos(t), 160 + 5 * np.sin(t)],
-            "mouth": np.c_[np.linspace(110, 146, 9), np.full(9, 186.0)]}
+    return {
+        "yaw": np.float64(20.0),
+        "pitch": np.float64(-5.0),
+        "roll": np.float64(3.0),
+        "head": [head],
+        "eyes": np.stack([eye(161), eye(95)]),
+        "pupils": np.array([[95, 120, 3, 8, 0.1, 0], [161, 120, 3, 8, 0, 0]]),
+        "nose": np.c_[128 + 8 * np.cos(t), 160 + 5 * np.sin(t)],
+        "mouth": np.c_[np.linspace(110, 146, 9), np.full(9, 186.0)],
+    }
 
 
 def synthetic_layers(seed: int = 0) -> list:
@@ -55,7 +61,7 @@ def synthetic_layers(seed: int = 0) -> list:
     stage 2 once per eye, fur strokes in five colours."""
     rng = np.random.default_rng(seed)
     ranges = synthetic_ranges()
-    fur = rng.integers(0, NRGB ** 3, 5)
+    fur = rng.integers(0, NRGB**3, 5)
     out = []
     order = [(k, j, None) for k, j in LAYERS if k < EYE_STAGE]
     order += [(k, j, s) for s in (0, 1) for k, j in LAYERS if k == EYE_STAGE]
@@ -63,9 +69,14 @@ def synthetic_layers(seed: int = 0) -> list:
     for k, j, side in order:
         n = 6
         x = rng.integers(40, 90, n) + (64 if side == 1 else 0) if side is not None else rng.integers(0, NXY, n)
-        colour = rng.integers(0, NRGB ** 3, n) if k == EYE_STAGE else rng.choice(fur, n)
-        raw = np.c_[x, rng.integers(0, NXY, n), rng.integers(0, NANGLE, n), rng.integers(0, NSIZE * NSIZE, n),
-                    colour * NALPHA + rng.integers(0, NALPHA, n)]
+        colour = rng.integers(0, NRGB**3, n) if k == EYE_STAGE else rng.choice(fur, n)
+        raw = np.c_[
+            x,
+            rng.integers(0, NXY, n),
+            rng.integers(0, NANGLE, n),
+            rng.integers(0, NSIZE * NSIZE, n),
+            colour * NALPHA + rng.integers(0, NALPHA, n),
+        ]
         out.append((k, j, decode_strokes(raw, (k, j), ranges), side))
     return out
 
@@ -81,22 +92,28 @@ def test_vocabulary_appends_optional_tokens_after_the_shared_ones():
     assert len(base.specials) == 49 and len(full.specials) == 84
     assert full.specials[:49] == base.specials
     assert base.field_names == ["x", "y", "angle", "size", "paint"] and base.size == 49 + 256 + 256 + 32 + 36 + 13824
-    assert full.field_names[-1] == "colour" and full.field_sizes["paint"] == (PALETTE_K + NRGB ** 3) * NALPHA
+    assert full.field_names[-1] == "colour" and full.field_sizes["paint"] == (PALETTE_K + NRGB**3) * NALPHA
     assert full.size == 16344 and full.palette_k.tolist() == [16, 0] and base.palette_k.tolist() == [0, 0]
     assert full.condition(["blue", "copper", "white", "tabby"]) == base.condition(["blue", "copper", "white", "tabby"])
-    assert full.condition_names(full.condition(["blue", "unclear", "white", "tabby"])) == ["blue", "unclear", "white",
-                                                                                         "tabby"]
+    assert full.condition_names(full.condition(["blue", "unclear", "white", "tabby"])) == [
+        "blue",
+        "unclear",
+        "white",
+        "tabby",
+    ]
 
 
 def test_layout_from_the_vocabulary_matches_the_token_format():
     v = Vocabulary.build(True, True, True)
-    layout = layout_from_specials(list(v.specials), v.field_names, [v.field_sizes[f] for f in v.field_names],
-                                  tuple(v.palette_k))
+    layout = layout_from_specials(
+        list(v.specials), v.field_names, [v.field_sizes[f] for f in v.field_names], tuple(v.palette_k)
+    )
     names = [v.specials[i] for i in layout.slots]
     assert names[-1] == "EOS" and "PAL_ALL" in names and "EYE_L" in names and "PART_EAR_L" in names
     assert all(not n.startswith(("COND_", "TASK_")) for n in names)
-    assert [v.specials[i] for i in layout.plan_markers] == [f"PLAN_{r}" for r in
-                                                            ("HEAD", "EAR", "EYE", "PUPIL", "NOSE", "MOUTH")]
+    assert [v.specials[i] for i in layout.plan_markers] == [
+        f"PLAN_{r}" for r in ("HEAD", "EAR", "EYE", "PUPIL", "NOSE", "MOUTH")
+    ]
     assert layout.palette == ((v.ids["PAL_ALL"], PALETTE_K),)
     assert layout.field_offsets == tuple(v.offsets.values())
     assert layout.field_offsets[-1] + layout.field_sizes[-1] == v.size
@@ -106,8 +123,9 @@ def test_layout_from_the_vocabulary_matches_the_token_format():
 def test_encoding_and_decoding_gives_every_stroke_back(fmt):
     part_order, plan, palette = fmt
     vocab, ranges, layers = Vocabulary.build(*fmt), synthetic_ranges(), synthetic_layers()
-    t, f = painting_tokens(layers, ranges, vocab, part_map(POINTS) if part_order else None,
-                           synthetic_plan() if plan else None)
+    t, f = painting_tokens(
+        layers, ranges, vocab, part_map(POINTS) if part_order else None, synthetic_plan() if plan else None
+    )
     assert len(t) == len(f) and t.dtype == np.int32 and f.dtype == np.int8
     assert (f == 5).sum() == sum(len(p.xy) for *_, p, _ in layers) and (f == 6).sum() == PALETTE_K * palette
     back = layers_from_tokens(t, ranges, vocab)
@@ -138,12 +156,12 @@ def test_a_broken_sequence_decodes_what_it_can():
     vocab, ranges = Vocabulary.build(True, True, True), synthetic_ranges()
     t, _ = painting_tokens(synthetic_layers(), ranges, vocab, part_map(POINTS), synthetic_plan())
     whole = sum(len(p.xy) for *_, p in layers_from_tokens(t, ranges, vocab))
-    cut = layers_from_tokens(t[:-3], ranges, vocab)                       # the last stroke cut short
+    cut = layers_from_tokens(t[:-3], ranges, vocab)  # the last stroke cut short
     assert sum(len(p.xy) for *_, p in cut) == whole - 1
-    eos = np.r_[t[:len(t) // 2], vocab.ids["EOS"], t[len(t) // 2:]]      # everything after EOS is ignored
+    eos = np.r_[t[: len(t) // 2], vocab.ids["EOS"], t[len(t) // 2 :]]  # everything after EOS is ignored
     assert sum(len(p.xy) for *_, p in layers_from_tokens(eos, ranges, vocab)) < whole
     stray = np.array([vocab.offsets[k] for k in ("x", "y", "angle", "size", "paint")])
-    assert layers_from_tokens(stray, ranges, vocab) == []                   # a stroke outside any layer
+    assert layers_from_tokens(stray, ranges, vocab) == []  # a stroke outside any layer
 
 
 def test_plan_tokens_of_a_mirrored_painting_are_flipped():
@@ -154,10 +172,22 @@ def test_plan_tokens_of_a_mirrored_painting_are_flipped():
     pose = lambda toks: [vocab.specials[x] for x in toks[1:4]]  # noqa: E731
     assert pose(t) == ["POSE_9", "POSE_7", "POSE_8"] and pose(tm) == ["POSE_6", "POSE_7", "POSE_7"]
     assert sorted(set(vocab.specials[x] for x in t if x < len(vocab.specials))) == sorted(
-        ["PLAN_POSE", "POSE_9", "POSE_7", "POSE_8", "PLAN_HEAD", "PLAN_EAR", "PLAN_EYE", "PLAN_PUPIL", "PLAN_NOSE",
-         "PLAN_MOUTH", "PLAN_END"])
+        [
+            "PLAN_POSE",
+            "POSE_9",
+            "POSE_7",
+            "POSE_8",
+            "PLAN_HEAD",
+            "PLAN_EAR",
+            "PLAN_EYE",
+            "PLAN_PUPIL",
+            "PLAN_NOSE",
+            "PLAN_MOUTH",
+            "PLAN_END",
+        ]
+    )
     first_eye = list(t).index(vocab.ids["PLAN_EYE"])
-    assert t[first_eye + 1] - vocab.offsets["x"] < 128       # the eyes go left to right on the image
+    assert t[first_eye + 1] - vocab.offsets["x"] < 128  # the eyes go left to right on the image
 
 
 def test_serpentine_and_around_orders():
@@ -212,8 +242,9 @@ def test_real_paintings_encode_and_decode_as_the_reference(real, fmt):
     part_order, plan, palette = fmt
     vocab = Vocabulary.build(*fmt)
     sp = list(vocab.specials)
-    fmt_ref = ED.TokenFormat(EA.ranges_from(ranges_arr), {n: i for i, n in enumerate(sp)}, ED.offsets_of(sp), plan,
-                             palette)
+    fmt_ref = ED.TokenFormat(
+        EA.ranges_from(ranges_arr), {n: i for i, n in enumerate(sp)}, ED.offsets_of(sp), plan, palette
+    )
     ranges = ranges_from_array(ranges_arr)
     for name, source, layers in cats:
         parts_ref = {f: ED.part_map(ED.face_points(name, f)) for f in (False, True)} if part_order else None
@@ -221,8 +252,14 @@ def test_real_paintings_encode_and_decode_as_the_reference(real, fmt):
         for version, lay in (("A", layers), ("A~m", ED.mirrored([("A", layers, [0, 0, 0, 0])])[0][1])):
             t_ref, f_ref = ED.version_tokens(name, version, lay, fmt_ref, parts_ref)
             flip = version.endswith("~m")
-            t, f = painting_tokens(lay, ranges, vocab, mine_parts[flip] if part_order else None,
-                                   read_plan(source.plan) if plan else None, flip)
+            t, f = painting_tokens(
+                lay,
+                ranges,
+                vocab,
+                mine_parts[flip] if part_order else None,
+                read_plan(source.plan) if plan else None,
+                flip,
+            )
             assert np.array_equal(t, t_ref) and np.array_equal(f, f_ref) and t.dtype == t_ref.dtype
             back_ref = ED.layers_from_tokens(t_ref, EA.ranges_from(ranges_arr), sp, ED.offsets_of(sp))
             back = layers_from_tokens(t, ranges, vocab)

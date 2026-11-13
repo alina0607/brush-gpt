@@ -47,14 +47,19 @@ def main() -> None:
         ap.error("--eye-versions needs --real-eyes")
     torch.set_num_threads(a.threads)
     summary = build(
-        read_cat_table(a.cats, a.paintings), read_coat_labels(a.coat_labels), Path(a.out),
+        read_cat_table(a.cats, a.paintings),
+        read_coat_labels(a.coat_labels),
+        Path(a.out),
         Vocabulary.build(a.part_order, a.plan, a.palette),
         split=read_split(a.split) if a.split else None,
         duplicates=read_duplicate_pairs(a.duplicates) if a.duplicates else (),
         ranges=load_ranges(a.ranges_from) if a.ranges_from else None,
         eye_versions=Path(a.eye_versions) if a.eye_versions else None,
         eye_targets=eye_targets(a.real_eyes) if a.real_eyes else None,
-        mirror=a.mirror, limit=a.limit, log=lambda row: print(json.dumps(row), flush=True))
+        mirror=a.mirror,
+        limit=a.limit,
+        log=lambda row: print(json.dumps(row), flush=True),
+    )
     print(json.dumps(summary, indent=1))
 
 

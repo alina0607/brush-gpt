@@ -34,8 +34,8 @@ from torch import nn
 
 from .layers import DecoderBlock, DecoderLayerCache, EncoderBlock, RMSNorm, init_gpt2_style, rope_tables
 
-STROKE_FIELDS = 5   # x, y, angle, size, paint: the fields of one stroke, in order
-COLOUR_CHOICE = 5   # the choice set of a palette entry (after the five stroke fields)
+STROKE_FIELDS = 5  # x, y, angle, size, paint: the fields of one stroke, in order
+COLOUR_CHOICE = 5  # the choice set of a palette entry (after the five stroke fields)
 
 
 @dataclass(frozen=True)
@@ -90,9 +90,9 @@ class TokenLayout:
 class GrammarState:
     """Where each painting being sampled is in the token format."""
 
-    choice: torch.Tensor          # (B,) the choice set of the next token
-    in_plan: torch.Tensor         # (B,) inside a sketch-plan outline: (x, y) points only
-    palette_left: torch.Tensor    # (B,) colour tokens still to write after a palette marker
+    choice: torch.Tensor  # (B,) the choice set of the next token
+    in_plan: torch.Tensor  # (B,) inside a sketch-plan outline: (x, y) points only
+    palette_left: torch.Tensor  # (B,) colour tokens still to write after a palette marker
 
 
 class Grammar(Protocol):
@@ -135,8 +135,11 @@ class StrokeGrammar:
             counts = torch.tensor([k for _, k in lay.palette], dtype=torch.long, device=dev)
             opens = is_slot & torch.isin(tokens, markers)
             left = torch.where(opens, counts[(tokens[:, None] == markers).float().argmax(1)], left - in_palette.long())
-            nxt = torch.where(opens | (in_palette & (left > 0)), torch.full_like(nxt, COLOUR_CHOICE),
-                              torch.where(in_palette, torch.zeros_like(nxt), nxt))
+            nxt = torch.where(
+                opens | (in_palette & (left > 0)),
+                torch.full_like(nxt, COLOUR_CHOICE),
+                torch.where(in_palette, torch.zeros_like(nxt), nxt),
+            )
         return GrammarState(nxt, in_plan, left)
 
 
@@ -144,14 +147,14 @@ class StrokeGrammar:
 class BrushGPTConfig:
     """Size and shape of Brush GPT; stored in every checkpoint."""
 
-    vocab_size: int                 # including the null token when null_token is set
+    vocab_size: int  # including the null token when null_token is set
     d_model: int = 512
     n_heads: int = 8
     enc_layers: int = 4
     dec_layers: int = 3
-    max_len: int = 16384            # longest position the rotary tables cover
-    dropout: float = 0.0            # training only: embeddings, attention weights, residual branches
-    null_token: bool = False        # the last vocabulary id means "no attributes" (condition dropout, guidance)
+    max_len: int = 16384  # longest position the rotary tables cover
+    dropout: float = 0.0  # training only: embeddings, attention weights, residual branches
+    null_token: bool = False  # the last vocabulary id means "no attributes" (condition dropout, guidance)
 
     @property
     def null_id(self) -> int | None:
@@ -167,11 +170,9 @@ class BrushGPT(nn.Module):
         self.cfg, self.layout = cfg, layout
         self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
         self.embed_dropout = nn.Dropout(cfg.dropout)
-        self.encoder = nn.ModuleList(EncoderBlock(cfg.d_model, cfg.n_heads, cfg.dropout)
-                                     for _ in range(cfg.enc_layers))
+        self.encoder = nn.ModuleList(EncoderBlock(cfg.d_model, cfg.n_heads, cfg.dropout) for _ in range(cfg.enc_layers))
         self.encoder_norm = RMSNorm(cfg.d_model)
-        self.decoder = nn.ModuleList(DecoderBlock(cfg.d_model, cfg.n_heads, cfg.dropout)
-                                     for _ in range(cfg.dec_layers))
+        self.decoder = nn.ModuleList(DecoderBlock(cfg.d_model, cfg.n_heads, cfg.dropout) for _ in range(cfg.dec_layers))
         self.norm = RMSNorm(cfg.d_model)
         cos, sin = rope_tables(cfg.d_model // cfg.n_heads, cfg.max_len)
         self.register_buffer("cos", cos, persistent=False)
@@ -190,13 +191,14 @@ class BrushGPT(nn.Module):
             x = block(x, self.cos[:t], self.sin[:t])
         return self.encoder_norm(x)
 
-    def decode(self, tokens: torch.Tensor, memory: torch.Tensor, start: int = 0,
-               cache: list[DecoderLayerCache] | None = None) -> torch.Tensor:
+    def decode(
+        self, tokens: torch.Tensor, memory: torch.Tensor, start: int = 0, cache: list[DecoderLayerCache] | None = None
+    ) -> torch.Tensor:
         """The decoder's final hidden states (B, T, d) for tokens (B, T) at positions start, start + 1, ...;
         memory is the encoder's output. With a cache, earlier positions are taken from it."""
         t = tokens.size(1)
-        cos, sin = self.cos[start:start + t], self.sin[start:start + t]
-        memory_cos, memory_sin = self.cos[:memory.size(1)], self.sin[:memory.size(1)]
+        cos, sin = self.cos[start : start + t], self.sin[start : start + t]
+        memory_cos, memory_sin = self.cos[: memory.size(1)], self.sin[: memory.size(1)]
         x = self.embed_dropout(self.embed(tokens))
         for i, block in enumerate(self.decoder):
             x = block(x, cos, sin, memory, memory_cos, memory_sin, None if cache is None else cache[i])
@@ -207,11 +209,12 @@ class BrushGPT(nn.Module):
         if choice == 0:
             return h @ self.embed.weight[self.layout.stroke_start_ids(h.device)].T
         o, n = self.layout.field_offsets[choice], self.layout.field_sizes[choice]
-        return h @ self.embed.weight[o:o + n].T
+        return h @ self.embed.weight[o : o + n].T
 
     # --------------------------------------------------------------------------------------------------- loss
-    def loss(self, cond: torch.Tensor, tokens: torch.Tensor,
-             fields: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def loss(
+        self, cond: torch.Tensor, tokens: torch.Tensor, fields: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """One painting (cond (C,), tokens (L,), their data fields (L,)) with teacher forcing.
 
         Returns the mean cross-entropy over the L tokens and the closing EOS, each scored among its own choice set,
@@ -239,9 +242,16 @@ class BrushGPT(nn.Module):
 
     # ----------------------------------------------------------------------------------------------- sampling
     @torch.no_grad()
-    def sample(self, cond: torch.Tensor, max_tokens: int, temperature: float = 1.0,
-               generator: torch.Generator | None = None, uncond: torch.Tensor | None = None,
-               guidance: float = 1.0, grammar: Grammar | None = None) -> torch.Tensor:
+    def sample(
+        self,
+        cond: torch.Tensor,
+        max_tokens: int,
+        temperature: float = 1.0,
+        generator: torch.Generator | None = None,
+        uncond: torch.Tensor | None = None,
+        guidance: float = 1.0,
+        grammar: Grammar | None = None,
+    ) -> torch.Tensor:
         """Paint one painting per condition (cond (B, C)), token by token with a key/value cache, until EOS or
         max_tokens. Returns (B, max_tokens): the tokens up to and including EOS, then -1.
 
@@ -263,8 +273,9 @@ class BrushGPT(nn.Module):
         state = grammar.start(b, dev)
         done = torch.zeros(b, dtype=torch.bool, device=dev)
         for i in range(max_tokens):
-            tok = self._draw(h, grammar.choice(state), start_ids, (guidance if guided else None, temperature),
-                             generator)
+            tok = self._draw(
+                h, grammar.choice(state), start_ids, (guidance if guided else None, temperature), generator
+            )
             state = grammar.advance(state, tok)
             out[:, i] = torch.where(done, torch.full_like(tok, -1), tok)
             done |= tok == eos
@@ -275,8 +286,14 @@ class BrushGPT(nn.Module):
             pos += 1
         return out
 
-    def _draw(self, h: torch.Tensor, choice: torch.Tensor, start_ids: torch.Tensor,
-              how: tuple[float | None, float], generator: torch.Generator | None) -> torch.Tensor:
+    def _draw(
+        self,
+        h: torch.Tensor,
+        choice: torch.Tensor,
+        start_ids: torch.Tensor,
+        how: tuple[float | None, float],
+        generator: torch.Generator | None,
+    ) -> torch.Tensor:
         """One token per painting from its choice set; how = (guidance or None, temperature). With guidance, h holds
         the conditional rows, then the unconditional ones. The choice sets present are drawn in increasing order,
         which fixes how the generator is used."""
@@ -302,9 +319,15 @@ def drop_attributes(cond: torch.Tensor, null_id: int, keep: int = 1) -> torch.Te
 
 
 # ---------------------------------------------------------------------------------------------- checkpoints
-_REFERENCE_KEYS = [(r"^enc\.", "encoder."), (r"^dec\.", "decoder."), (r"^enc_norm\.", "encoder_norm."),
-                   (r"\.n1\.", ".attn_norm."), (r"\.nc\.", ".cross_norm."), (r"\.xattn\.", ".cross_attn."),
-                   (r"\.n2\.", ".mlp_norm.")]
+_REFERENCE_KEYS = [
+    (r"^enc\.", "encoder."),
+    (r"^dec\.", "decoder."),
+    (r"^enc_norm\.", "encoder_norm."),
+    (r"\.n1\.", ".attn_norm."),
+    (r"\.nc\.", ".cross_norm."),
+    (r"\.xattn\.", ".cross_attn."),
+    (r"\.n2\.", ".mlp_norm."),
+]
 
 
 def convert_reference_state_dict(state: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -322,13 +345,19 @@ def config_from_reference(d: dict[str, Any]) -> BrushGPTConfig:
     """BrushGPTConfig of a research-code checkpoint (an encoder-decoder writing its own layout)."""
     if d.get("arch") != "encdec" or d.get("layout") != "free":
         raise ValueError(f"not a Brush GPT checkpoint: arch={d.get('arch')}, layout={d.get('layout')}")
-    return BrushGPTConfig(vocab_size=d["vocab"], d_model=d["d_model"], n_heads=d["n_heads"],
-                          enc_layers=d["enc_layers"], dec_layers=d["dec_layers"], max_len=d["max_len"],
-                          dropout=d.get("dropout", 0.0), null_token=d.get("cond_drop", 0.0) > 0)
+    return BrushGPTConfig(
+        vocab_size=d["vocab"],
+        d_model=d["d_model"],
+        n_heads=d["n_heads"],
+        enc_layers=d["enc_layers"],
+        dec_layers=d["dec_layers"],
+        max_len=d["max_len"],
+        dropout=d.get("dropout", 0.0),
+        null_token=d.get("cond_drop", 0.0) > 0,
+    )
 
 
-def load_checkpoint(checkpoint: dict[str, Any], layout: TokenLayout,
-                    device: torch.device | str = "cpu") -> BrushGPT:
+def load_checkpoint(checkpoint: dict[str, Any], layout: TokenLayout, device: torch.device | str = "cpu") -> BrushGPT:
     """A BrushGPT from a loaded checkpoint dict, in this package's format or the research code's."""
     if "arch" in checkpoint["config"]:
         cfg, state = config_from_reference(checkpoint["config"]), convert_reference_state_dict(checkpoint["model"])

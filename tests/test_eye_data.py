@@ -42,11 +42,13 @@ RANGES = {j: np.array([[0.05, 0.05, 0.2], [1.5, 1.0, 1.0]]) for j in range(6)}
 
 
 def eye_strokes(rng: np.random.Generator, n: int, centre: np.ndarray, r: float) -> StrokeParams:
-    return StrokeParams(torch.tensor(centre + rng.uniform(-r, r, (n, 2)), dtype=torch.float32),
-                        torch.tensor(rng.uniform(0.1, 0.9, (n, 2)) * r, dtype=torch.float32),
-                        torch.tensor(rng.uniform(-3, 3, n), dtype=torch.float32),
-                        torch.tensor(rng.uniform(0, 1, (n, 3)), dtype=torch.float32),
-                        torch.tensor(rng.uniform(0.3, 1, n), dtype=torch.float32))
+    return StrokeParams(
+        torch.tensor(centre + rng.uniform(-r, r, (n, 2)), dtype=torch.float32),
+        torch.tensor(rng.uniform(0.1, 0.9, (n, 2)) * r, dtype=torch.float32),
+        torch.tensor(rng.uniform(-3, 3, n), dtype=torch.float32),
+        torch.tensor(rng.uniform(0, 1, (n, 3)), dtype=torch.float32),
+        torch.tensor(rng.uniform(0.3, 1, n), dtype=torch.float32),
+    )
 
 
 def a_geometry(flip: bool = False) -> EyeGeometry:
@@ -59,7 +61,7 @@ def a_geometry(flip: bool = False) -> EyeGeometry:
 # ------------------------------------------------------------------ unit tests
 def test_vocabulary_layout():
     assert PREFIX == 52 and len(SPECIALS) == 38 and VOCAB == 15942
-    assert OFFSET["x"] == len(SPECIALS) and OFFSET["ring"] + 12 ** 3 == VOCAB
+    assert OFFSET["x"] == len(SPECIALS) and OFFSET["ring"] + 12**3 == VOCAB
 
 
 def test_frame_round_trip_and_mirror():
@@ -72,8 +74,10 @@ def test_frame_round_trip_and_mirror():
 
 def test_plan_points_go_on_the_two_pixel_grid():
     assert np.allclose(on_plan_grid(np.array([[10.2, 255.9], [-3.0, 300.0]])), [[21.0, 511.0], [1.0, 511.0]])
-    plan = {"eyes": np.stack([np.c_[np.full(16, 160.0), np.arange(16.0)], np.c_[np.full(16, 40.0), np.arange(16.0)]]),
-            "pupils": np.array([[40.0, 8.0, 2.0, 5.0, 0.0], [np.nan, 0, 0, 0, 0]])}
+    plan = {
+        "eyes": np.stack([np.c_[np.full(16, 160.0), np.arange(16.0)], np.c_[np.full(16, 40.0), np.arange(16.0)]]),
+        "pupils": np.array([[40.0, 8.0, 2.0, 5.0, 0.0], [np.nan, 0, 0, 0, 0]]),
+    }
     left, right = plan_eyes(plan)
     assert left.outline[:, 0].mean() < right.outline[:, 0].mean()
     assert left.pupil is not None and left.pupil.shape == (6, 2) and right.pupil is None
@@ -100,7 +104,7 @@ def test_strokes_survive_the_tokens_up_to_the_bins(flip):
     assert [j for j, _ in back] == [0, 3]
     for (_, p), (_, q) in zip(layers, back, strict=True):
         a, b = np.sort(p.xy.numpy(), 0), np.sort(q.xy.numpy(), 0)
-        assert np.abs(a - b).max() <= 2 * SPAN * g.frame.r / NXY        # one x / y bin
+        assert np.abs(a - b).max() <= 2 * SPAN * g.frame.r / NXY  # one x / y bin
         assert np.allclose(np.sort(p.alpha.numpy()), np.sort(q.alpha.numpy()), atol=0.1)
 
 
@@ -156,9 +160,21 @@ def test_the_script_builds_from_a_cat_table(tmp_path, monkeypatch):
     write_cat_table(cats, tmp_path / "cats.csv")
     (tmp_path / "review.csv").write_text("source,id,eyes\nsyn,x,used\n")
     (tmp_path / "split.json").write_text(json.dumps({"split": {"cat1": "held"}}))
-    monkeypatch.setattr(sys, "argv", ["build_eye_data.py", "--cats", str(tmp_path / "cats.csv"), "--paintings",
-                                      str(tmp_path / "paintings"), "--split", str(tmp_path / "split.json"),
-                                      "--out", str(tmp_path / "out")])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "build_eye_data.py",
+            "--cats",
+            str(tmp_path / "cats.csv"),
+            "--paintings",
+            str(tmp_path / "paintings"),
+            "--split",
+            str(tmp_path / "split.json"),
+            "--out",
+            str(tmp_path / "out"),
+        ],
+    )
     runpy.run_path(str(SCRIPT), run_name="__main__")
     z = np.load(tmp_path / "out" / "data.npz")
     assert z["cats"].tolist() == ["cat0", "cat1", "cat2"] and z["split"].tolist() == ["train", "held", "train"]
@@ -173,6 +189,7 @@ def ref():
     if not data.exists():
         pytest.skip("no reference eye data")
     from brushgpt.attributes import eye_targets
+
     return Y, ED.EA.EV, eye_targets(R.COAT), np.load(data)
 
 
@@ -185,19 +202,19 @@ def test_eye_rows_are_identical_to_the_reference_and_its_build(ref):
     assert len(got.tokens) == len(want_tokens) == 40 and got.counts == want_counts
     assert all(np.array_equal(a, b) for a, b in zip(got.tokens, want_tokens, strict=True))
     assert got.meta == want_meta
-    assert any(m[-1] for m in got.meta)                                 # mirrored eyes are among them
+    assert any(m[-1] for m in got.meta)  # mirrored eyes are among them
     cats = [str(c) for c in z["cats"]]
-    for ci, name in enumerate(REAL_CATS):                               # the same rows as the final build
+    for ci, name in enumerate(REAL_CATS):  # the same rows as the final build
         rows = np.flatnonzero(z["cat_id"] == cats.index(name))
         mine = [t for t, m in zip(got.tokens, got.meta, strict=True) if m[0] == ci]
         assert len(rows) == len(mine)
-        assert all(np.array_equal(z["tokens"][i][:z["lengths"][i]], t) for i, t in zip(rows, mine, strict=True))
+        assert all(np.array_equal(z["tokens"][i][: z["lengths"][i]], t) for i, t in zip(rows, mine, strict=True))
 
 
 def test_a_small_build_is_identical_to_the_reference(ref, tmp_path):
     Y, ev, targets, _ = ref
     CV = reference("coat_versions")
-    names = [*REAL_CATS, MORE_TRAIN_CAT]                                # bins from both training cats: every layer
+    names = [*REAL_CATS, MORE_TRAIN_CAT]  # bins from both training cats: every layer
     kept = Y.eyes_kept
     Y.eyes_kept = lambda: set(names)
     try:
@@ -205,8 +222,14 @@ def test_a_small_build_is_identical_to_the_reference(ref, tmp_path):
     finally:
         Y.eyes_kept = kept
     pairs = ml_root() / "runs" / "afhq_duplicates" / "pairs.json"
-    got = build([cat_source(n) for n in names], tmp_path / "mine", split=read_split(CV.OUT / "plan.json"),
-                duplicates=read_duplicate_pairs(pairs), eye_versions=ev, eye_targets=targets)
+    got = build(
+        [cat_source(n) for n in names],
+        tmp_path / "mine",
+        split=read_split(CV.OUT / "plan.json"),
+        duplicates=read_duplicate_pairs(pairs),
+        eye_versions=ev,
+        eye_targets=targets,
+    )
     assert got == json.loads(json.dumps(want))
     a, b = np.load(tmp_path / "ref" / "data.npz"), np.load(tmp_path / "mine" / "data.npz")
     assert sorted(a.files) == sorted(b.files)

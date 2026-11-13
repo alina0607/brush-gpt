@@ -39,20 +39,20 @@ COAT_PATTERNS = ("solid", "tabby", "spots", "bicolour", "tortie_calico", "pointe
 ATTRIBUTES = ("left_eye", "right_eye", "base", "pattern")
 
 # recolouring an eye
-RECOLOURED = ("yellow", "blue", "green", "orange", "copper")   # the colours an eye can be recoloured to
+RECOLOURED = ("yellow", "blue", "green", "orange", "copper")  # the colours an eye can be recoloured to
 GROW, FEATHER, HUE_NEAR = 2, 0.8, 60.0  # px past the plan's eye outline where a pixel of the iris's hue (within
-                                        # HUE_NEAR degrees) is recoloured too; the soft edge (px)
-NEAR_L, NEAR_MIN = 5.0, 30              # real eyes within NEAR_L of the eye's lightness (at least NEAR_MIN of them)
-VIVID = ("yellow",)                     # colours whose target is the more saturated half of the real eyes
-WRITE_GROW = 2                          # px about the eye outline a recoloured eye is written into
+# HUE_NEAR degrees) is recoloured too; the soft edge (px)
+NEAR_L, NEAR_MIN = 5.0, 30  # real eyes within NEAR_L of the eye's lightness (at least NEAR_MIN of them)
+VIVID = ("yellow",)  # colours whose target is the more saturated half of the real eyes
+WRITE_GROW = 2  # px about the eye outline a recoloured eye is written into
 
 # the learned coat reader
 CLIP_MODEL = "openai/clip-vit-base-patch32"
 CLIP_MEAN = np.array([0.48145466, 0.4578275, 0.40821073])
 CLIP_STD = np.array([0.26862954, 0.26130258, 0.27577711])
-READER_SETUP = {"base": ("both", 32.0), "pattern": ("clip", 8.0)}   # features and the regression's C
-CONFIDENT = {"base": 0.6, "pattern": 0.5}                            # the least probability that is not "unclear"
-COLOUR_WEIGHT = 0.1     # the standardised colour statistics' weight next to the unit-length CLIP features
+READER_SETUP = {"base": ("both", 32.0), "pattern": ("clip", 8.0)}  # features and the regression's C
+CONFIDENT = {"base": 0.6, "pattern": 0.5}  # the least probability that is not "unclear"
+COLOUR_WEIGHT = 0.1  # the standardised colour statistics' weight next to the unit-length CLIP features
 
 
 # ------------------------------------------------------------------ eye colour
@@ -105,8 +105,11 @@ def eye_view(inputs: CatInputs) -> dict:
     """What the eye readers need of a cat, at the painter's canvas size: the photo cut to the box ("photo"), the
     face points ("points") and the plan's eye masks ("eye", "iris", ...). The same as those keys of
     `cat.prepare_cat`, without the costly parts of it."""
-    return {"photo": photo_crop(inputs, SIDE), "points": inputs.points * SIDE / INPUT_SIDE,
-            **plan_zones(inputs.plan, inputs.points)}
+    return {
+        "photo": photo_crop(inputs, SIDE),
+        "points": inputs.points * SIDE / INPUT_SIDE,
+        **plan_zones(inputs.plan, inputs.points),
+    }
 
 
 # ------------------------------------------------------------------ eye recolouring
@@ -155,19 +158,24 @@ def recolour(img: np.ndarray, cat: Mapping, targets: Sequence[np.ndarray]) -> np
     for iris, side, t in zip(eye_masks(cat), (left, ~left), targets, strict=True):
         own = eye_colour(lab, iris)
         step = target_at(t, own[0])[0] - own[1:]
-        near = np.clip((np.cos(hue - math.atan2(own[2], own[1])) - math.cos(math.radians(HUE_NEAR)))
-                       / (1 - math.cos(math.radians(HUE_NEAR))), 0, 1)
+        near = np.clip(
+            (np.cos(hue - math.atan2(own[2], own[1])) - math.cos(math.radians(HUE_NEAR)))
+            / (1 - math.cos(math.radians(HUE_NEAR))),
+            0,
+            1,
+        )
         region = np.where(iris, 1.0, near * (grown & side))
         w = ndimage.gaussian_filter(region, FEATHER) * np.clip(chroma / max(math.hypot(own[1], own[2]), 1e-3), 0, 1)
         out[..., 1:] += w[..., None] * step
     return np.clip(lab2rgb(out), 0, 1).astype(np.float32)
 
 
-def recolour_eyes(img: np.ndarray, cat: Mapping, targets: Mapping[str, np.ndarray],
-                  to: Sequence[str | None]) -> np.ndarray:
+def recolour_eyes(
+    img: np.ndarray, cat: Mapping, targets: Mapping[str, np.ndarray], to: Sequence[str | None]
+) -> np.ndarray:
     """img with each eye named in `to` (left, right; None keeps that eye) recoloured to that colour, written inside
     that eye only (its outline grown WRITE_GROW px), so the rest of the image is unchanged."""
-    both = recolour(img, cat, [targets[c or "blue"] for c in to])   # a kept eye's recolouring is never written
+    both = recolour(img, cat, [targets[c or "blue"] for c in to])  # a kept eye's recolouring is never written
     left = image_left(cat)
     grown = ndimage.binary_dilation(cat["eye"], iterations=WRITE_GROW)
     write = np.zeros_like(grown)
@@ -202,8 +210,9 @@ def colour_stats(img: np.ndarray) -> np.ndarray:
     c = np.hypot(lab[:, 1], lab[:, 2])
     h = np.degrees(np.arctan2(lab[:, 2], lab[:, 1])) % 360
     q = np.percentile(np.c_[lab, c], [10, 25, 50, 75, 90], axis=0).ravel()
-    return np.r_[q, (lab[:, 0] < 25).mean(), ((lab[:, 0] > 80) & (c < 10)).mean(),
-                 ((c > 15) & (h > 20) & (h < 100)).mean()]
+    return np.r_[
+        q, (lab[:, 0] < 25).mean(), ((lab[:, 0] > 80) & (c < 10)).mean(), ((c > 15) & (h > 20) & (h < 100)).mean()
+    ]
 
 
 def reader_features(kind: str, clip: np.ndarray, colour: np.ndarray, colour_ref: np.ndarray) -> np.ndarray:
@@ -236,8 +245,10 @@ class CoatReader:
         self.models = {}
         for key, (kind, strength) in READER_SETUP.items():
             y = np.array([r[key] for r in rows])
-            x = np.r_[reader_features(kind, z["photo"][idx], c["photo"][idx], self.colour_ref),
-                      reader_features(kind, z["painting"][idx], c["painting"][idx], self.colour_ref)]
+            x = np.r_[
+                reader_features(kind, z["photo"][idx], c["photo"][idx], self.colour_ref),
+                reader_features(kind, z["painting"][idx], c["painting"][idx], self.colour_ref),
+            ]
             model = LogisticRegression(C=strength, max_iter=5000, class_weight="balanced").fit(x, np.r_[y, y])
             self.models[key] = (kind, model)
         self.clip = CLIPModel.from_pretrained(clip_model, local_files_only=True).eval()
@@ -245,8 +256,14 @@ class CoatReader:
     def clip_features(self, images: Sequence[np.ndarray]) -> np.ndarray:
         import torch
 
-        x = np.stack([((np.asarray(to_uint8(a).resize((224, 224), Image.BICUBIC)) / 255.0 - CLIP_MEAN) / CLIP_STD)
-                      .transpose(2, 0, 1) for a in images])
+        x = np.stack(
+            [
+                ((np.asarray(to_uint8(a).resize((224, 224), Image.BICUBIC)) / 255.0 - CLIP_MEAN) / CLIP_STD).transpose(
+                    2, 0, 1
+                )
+                for a in images
+            ]
+        )
         with torch.no_grad():
             e = self.clip.get_image_features(pixel_values=torch.tensor(x, dtype=torch.float32))
         e = e if isinstance(e, torch.Tensor) else e.pooler_output
@@ -259,17 +276,21 @@ class CoatReader:
         for j in range(len(images)):
             row = {}
             for key, (kind, model) in self.models.items():
-                pr = model.predict_proba(reader_features(kind, clip[j:j + 1], colour[j:j + 1], self.colour_ref))[0]
+                pr = model.predict_proba(reader_features(kind, clip[j : j + 1], colour[j : j + 1], self.colour_ref))[0]
                 k = int(pr.argmax())
-                row[key] = {"label": str(model.classes_[k]), "p": round(float(pr[k]), 3),
-                            "confident": bool(pr[k] >= CONFIDENT[key])}
+                row[key] = {
+                    "label": str(model.classes_[k]),
+                    "p": round(float(pr[k]), 3),
+                    "confident": bool(pr[k] >= CONFIDENT[key]),
+                }
             rows.append(row)
         return rows
 
 
 # ------------------------------------------------------------------ judging a painting
-def painting_attributes(cat: Mapping, images: Sequence[np.ndarray],
-                        read_coat: Callable[[list[np.ndarray]], list[dict]]) -> list[list[str]]:
+def painting_attributes(
+    cat: Mapping, images: Sequence[np.ndarray], read_coat: Callable[[list[np.ndarray]], list[dict]]
+) -> list[list[str]]:
     """The four attribute names (ATTRIBUTES) read on each image of one cat: the eyes by colour, the coat by the
     learned reader."""
     coats = read_coat([np.clip(v, 0, 1) for v in images])

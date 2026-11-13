@@ -74,7 +74,7 @@ def test_data_splits_and_batches(synthetic_data):
     assert len(data.val) and len(data.held) == 2 and not set(data.val) & set(data.train)
     x, y, m = data.batch(data.train[:3], torch.device("cpu"))
     assert x.shape == y.shape == m.shape and torch.equal(x[:, 1:], y[:, :-1])
-    assert not m[:, :PREFIX - 1].any() and m[:, PREFIX - 1].all()
+    assert not m[:, : PREFIX - 1].any() and m[:, PREFIX - 1].all()
     assert int(m.sum()) == int((data.lengths[data.train[:3]] - PREFIX).sum())
     x, _, _ = data.batch(data.train[:3], torch.device("cpu"), 1.0, np.random.default_rng(0))
     assert (x[:, 2] == data.sp["NULL"]).all()
@@ -91,8 +91,16 @@ def test_sampling_follows_the_grammar(synthetic_data, guidance):
     data = EyeData(synthetic_data)
     model = tiny_model(data)
     pre = data.prefixes(data.held)
-    got = generate(model, pre, without_colour(pre, data.sp["NULL"]), EyeGrammar(data, "cpu"), 300, 1.0, guidance,
-                   torch.Generator().manual_seed(0)).numpy()
+    got = generate(
+        model,
+        pre,
+        without_colour(pre, data.sp["NULL"]),
+        EyeGrammar(data, "cpu"),
+        300,
+        1.0,
+        guidance,
+        torch.Generator().manual_seed(0),
+    ).numpy()
     frame, ranges = Frame(np.array([200.0, 240.0]), 30.0), load_eye_ranges(synthetic_data)
     for body in got:
         assert_well_formed(body, data)
@@ -112,7 +120,7 @@ def test_guidance_one_ignores_the_unconditional_half(synthetic_data):
 def test_geometry_of_an_eye_against_itself(synthetic_data):
     data = EyeData(synthetic_data)
     r = int(data.held[0])
-    t = data.tokens[r, :data.lengths[r]]
+    t = data.tokens[r, : data.lengths[r]]
     g = geometry(t[:PREFIX], t[PREFIX:], t[PREFIX:], data)
     assert g["strokes_ratio"] == 1.0 and 0 <= g["inside"] <= 1
     square = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], float)
@@ -135,13 +143,55 @@ def test_training_writes_a_checkpoint_that_samples(synthetic_data, tmp_path):
 
 
 def test_the_scripts_train_and_sample(synthetic_data, tmp_path, monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["train_eyes.py", "--data", str(synthetic_data), "--out", str(tmp_path),
-                                      "--d-model", "32", "--layers", "1", "--heads", "4", "--steps", "2",
-                                      "--batch", "2", "--eval-every", "2", "--sample-every", "0", "--device", "cpu"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "train_eyes.py",
+            "--data",
+            str(synthetic_data),
+            "--out",
+            str(tmp_path),
+            "--d-model",
+            "32",
+            "--layers",
+            "1",
+            "--heads",
+            "4",
+            "--steps",
+            "2",
+            "--batch",
+            "2",
+            "--eval-every",
+            "2",
+            "--sample-every",
+            "0",
+            "--device",
+            "cpu",
+        ],
+    )
     runpy.run_path(str(SCRIPTS / "train_eyes.py"), run_name="__main__")
-    monkeypatch.setattr(sys, "argv", ["sample_eyes.py", "--ckpt", str(tmp_path / "best.pt"), "--data",
-                                      str(synthetic_data), "--out", str(tmp_path / "s.npz"), "--cats", "1",
-                                      "--max-new", "40", "--eye-as", "blue", "--device", "cpu"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "sample_eyes.py",
+            "--ckpt",
+            str(tmp_path / "best.pt"),
+            "--data",
+            str(synthetic_data),
+            "--out",
+            str(tmp_path / "s.npz"),
+            "--cats",
+            "1",
+            "--max-new",
+            "40",
+            "--eye-as",
+            "blue",
+            "--device",
+            "cpu",
+        ],
+    )
     runpy.run_path(str(SCRIPTS / "sample_eyes.py"), run_name="__main__")
     s = EyeSamples.load(tmp_path / "s.npz")
     assert s.eye_as == "blue" and (s.prefix[:, 2] == SP["EYE_blue"]).all()
@@ -197,9 +247,21 @@ def test_real_checkpoint_gives_the_reference_logits_and_loss(real):
 @pytest.mark.parametrize("guidance, eye_as", [(1.0, ""), (2.0, ""), (2.0, "blue")])
 def test_sampling_is_identical_to_the_reference(real, tmp_path, guidance, eye_as):
     G, ckpt, path = real
-    G.sample(argparse.Namespace(ckpt=str(ckpt), data=str(path), out=str(tmp_path / "ref.npz"), cats=1,
-                                guidance=guidance, temperature=1.0, eye_as=eye_as, max_new=1200, batch=32, seed=0,
-                                device="cpu"))
+    G.sample(
+        argparse.Namespace(
+            ckpt=str(ckpt),
+            data=str(path),
+            out=str(tmp_path / "ref.npz"),
+            cats=1,
+            guidance=guidance,
+            temperature=1.0,
+            eye_as=eye_as,
+            max_new=1200,
+            batch=32,
+            seed=0,
+            device="cpu",
+        )
+    )
     data = EyeData(path)
     model = load_checkpoint(ckpt, "cpu", data.prefix + 1200)
     sample_held(model, data, 1, guidance, 1.0, eye_as, 1200, 32, 0).save(tmp_path / "mine.npz")
@@ -212,9 +274,26 @@ def test_sampling_is_identical_to_the_reference(real, tmp_path, guidance, eye_as
 @pytest.mark.parametrize("balance_cats", [False, True])
 def test_training_steps_are_identical_to_the_reference(real, tmp_path, balance_cats):
     G, _, path = real
-    args = dict(d_model=32, layers=2, heads=4, dropout=0.1, weight_decay=0.1, lr=1e-3, warmup=2, steps=4, batch=4,
-                cond_drop=0.5, balance_cats=balance_cats, eval_every=2, eval_limit=4, log_every=1, sample_every=2,
-                sample_n=2, stop_after_min=0, seed=0)
+    args = dict(
+        d_model=32,
+        layers=2,
+        heads=4,
+        dropout=0.1,
+        weight_decay=0.1,
+        lr=1e-3,
+        warmup=2,
+        steps=4,
+        batch=4,
+        cond_drop=0.5,
+        balance_cats=balance_cats,
+        eval_every=2,
+        eval_limit=4,
+        log_every=1,
+        sample_every=2,
+        sample_n=2,
+        stop_after_min=0,
+        seed=0,
+    )
     G.train(argparse.Namespace(data=str(path), out=str(tmp_path / "ref"), device="cpu", **args))
     data = EyeData(path)
     cfg = EyeTrainConfig(**{k: v for k, v in args.items() if k not in ("d_model", "layers", "heads", "dropout")})
@@ -227,4 +306,5 @@ def test_training_steps_are_identical_to_the_reference(real, tmp_path, balance_c
     def records(run: str) -> list[dict]:
         rows = [json.loads(x) for x in (tmp_path / run / "log.jsonl").read_text().splitlines()]
         return [{k: v for k, v in r.items() if k not in ("seconds", "tokens_per_s")} for r in rows]
+
     assert records("ref") == records("mine")

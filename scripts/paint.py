@@ -29,8 +29,12 @@ from brushgpt.painter import paint_cat
 
 def paint_one(name: str, cutout: str, photo: str, plan: str, out: Path, device: str) -> None:
     t0 = time.time()
-    paint_cat(load_inputs(cutout, photo, plan), out, device,
-              on_row=lambda row: print(json.dumps({"cat": name, **row}), flush=True))
+    paint_cat(
+        load_inputs(cutout, photo, plan),
+        out,
+        device,
+        on_row=lambda row: print(json.dumps({"cat": name, **row}), flush=True),
+    )
     print(json.dumps({"cat": name, "done": True, "seconds": round(time.time() - t0, 1)}), flush=True)
 
 

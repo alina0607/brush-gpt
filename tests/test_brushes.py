@@ -35,12 +35,25 @@ def reference(module: str):
 def random_strokes(n: int, side: int, size: tuple[float, float], seed: int) -> StrokeParams:
     g = torch.Generator().manual_seed(seed)
     u = lambda *shape: torch.rand(*shape, generator=g)  # noqa: E731
-    return StrokeParams(xy=u(n, 2) * side, lw=torch.tensor(size) * (0.5 + u(n, 2)), angle=(u(n) - 0.5) * 2 * math.pi,
-                        colour=u(n, 3), alpha=0.3 + 0.7 * u(n))
+    return StrokeParams(
+        xy=u(n, 2) * side,
+        lw=torch.tensor(size) * (0.5 + u(n, 2)),
+        angle=(u(n) - 0.5) * 2 * math.pi,
+        colour=u(n, 3),
+        alpha=0.3 + 0.7 * u(n),
+    )
 
 
-SIZES = {"wet": (40, 14), "drag": (40, 14), "stick": (60, 30), "pencil": (30, 2), "whisker": (60, 1.6),
-         "rake": (20, 4), "liner": (12, 3), "dot": (8, 6)}
+SIZES = {
+    "wet": (40, 14),
+    "drag": (40, 14),
+    "stick": (60, 30),
+    "pencil": (30, 2),
+    "whisker": (60, 1.6),
+    "rake": (20, 4),
+    "liner": (12, 3),
+    "dot": (8, 6),
+}
 
 
 # ------------------------------------------------------------------ unit tests
@@ -54,7 +67,7 @@ def test_hash01_is_deterministic_and_in_the_unit_interval():
 
 def test_strokes_in_the_same_token_bin_share_a_seed():
     a = seed_of(np.array([[100.1, 50.2]]), np.array([0.30]))
-    b = seed_of(np.array([[100.9, 50.9]]), np.array([0.31]))     # same 2 px cell, same angle bin
+    b = seed_of(np.array([[100.9, 50.9]]), np.array([0.31]))  # same 2 px cell, same angle bin
     c = seed_of(np.array([[103.0, 50.2]]), np.array([0.30]))
     assert torch.equal(a, b) and not torch.equal(a, c)
 
@@ -70,7 +83,7 @@ def test_every_brush_covers_0_to_1_and_has_a_gradient_for_each_value(kind):
     cov, _ = coverage(kind, p, stroke_seeds(p, 128), torch.rand(3, 9, 9, 2) * 128)
     assert float(cov.min()) >= 0 and float(cov.max()) <= 1
     for name, t in zip(StrokeParams._fields, params, strict=True):
-        if kind == "drag" and name == "colour":           # drag carries no paint of its own
+        if kind == "drag" and name == "colour":  # drag carries no paint of its own
             assert t.grad is None or float(t.grad.abs().sum()) == 0
             continue
         assert t.grad is not None and torch.isfinite(t.grad).all() and float(t.grad.abs().sum()) > 0, name
@@ -83,8 +96,13 @@ def test_clear_strokes_leave_the_canvas_unchanged():
 
 
 def test_an_opaque_liner_paints_its_colour_at_its_centre():
-    p = StrokeParams(torch.tensor([[32.0, 32.0]]), torch.tensor([[20.0, 6.0]]), torch.zeros(1),
-                     torch.tensor([[0.2, 0.4, 0.6]]), torch.ones(1))
+    p = StrokeParams(
+        torch.tensor([[32.0, 32.0]]),
+        torch.tensor([[20.0, 6.0]]),
+        torch.zeros(1),
+        torch.tensor([[0.2, 0.4, 0.6]]),
+        torch.ones(1),
+    )
     out = render([(Brush("liner", 20, 6), p)], side=64)
     assert torch.allclose(out[32, 32], torch.tensor([0.2, 0.4, 0.6]), atol=1e-3)
     assert torch.equal(out[0, 0], torch.ones(3))

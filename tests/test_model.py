@@ -19,18 +19,47 @@ from brushgpt.model import (
     load_checkpoint,
 )
 
-SPECIALS = ["BOS", "EOS", "SEP", "EYE_L", "EYE_R", "LAYER0", "LAYER1", "LAYER2", "COND_blue", "COND_green",
-            "COND_unclear", "COND_BASE_white", "COND_PAT_solid", "TASK_GEN", "PLAN_HEAD", "PLAN_END", "PAL_ALL"]
+SPECIALS = [
+    "BOS",
+    "EOS",
+    "SEP",
+    "EYE_L",
+    "EYE_R",
+    "LAYER0",
+    "LAYER1",
+    "LAYER2",
+    "COND_blue",
+    "COND_green",
+    "COND_unclear",
+    "COND_BASE_white",
+    "COND_PAT_solid",
+    "TASK_GEN",
+    "PLAN_HEAD",
+    "PLAN_END",
+    "PAL_ALL",
+]
 SP = {n: i for i, n in enumerate(SPECIALS)}
 SIZES = (8, 8, 4, 3, 6, 5)  # x, y, angle, size, paint, colour
 OFFSETS = tuple(len(SPECIALS) + sum(SIZES[:i]) for i in range(len(SIZES)))
 VOCAB = OFFSETS[-1] + SIZES[-1]
 SLOTS = tuple(SP[n] for n in ("EYE_L", "EYE_R", "LAYER0", "LAYER1", "LAYER2", "PLAN_HEAD", "PLAN_END", "EOS"))
-LAYOUT = TokenLayout(bos=SP["BOS"], slots=SLOTS, field_offsets=OFFSETS, field_sizes=SIZES,
-                     plan_markers=(SP["PLAN_HEAD"],), palette=((SP["PAL_ALL"], 3),))
+LAYOUT = TokenLayout(
+    bos=SP["BOS"],
+    slots=SLOTS,
+    field_offsets=OFFSETS,
+    field_sizes=SIZES,
+    plan_markers=(SP["PLAN_HEAD"],),
+    palette=((SP["PAL_ALL"], 3),),
+)
 # The same vocabulary with the palette marker among the slots, so sampling can open a palette.
-PAL_LAYOUT = TokenLayout(bos=SP["BOS"], slots=(*SLOTS[:-1], SP["PAL_ALL"], SP["EOS"]), field_offsets=OFFSETS,
-                         field_sizes=SIZES, plan_markers=(SP["PLAN_HEAD"],), palette=((SP["PAL_ALL"], 3),))
+PAL_LAYOUT = TokenLayout(
+    bos=SP["BOS"],
+    slots=(*SLOTS[:-1], SP["PAL_ALL"], SP["EOS"]),
+    field_offsets=OFFSETS,
+    field_sizes=SIZES,
+    plan_markers=(SP["PLAN_HEAD"],),
+    palette=((SP["PAL_ALL"], 3),),
+)
 
 
 def reference(module: str):
@@ -70,8 +99,16 @@ COND = torch.tensor([SP["TASK_GEN"], SP["COND_blue"], SP["COND_green"], SP["COND
 
 def tiny(layout: TokenLayout = LAYOUT, dropout: float = 0.0, null: bool = True, seed: int = 0) -> BrushGPT:
     torch.manual_seed(seed)
-    cfg = BrushGPTConfig(vocab_size=VOCAB + int(null), d_model=32, n_heads=4, enc_layers=2, dec_layers=2,
-                         max_len=256, dropout=dropout, null_token=null)
+    cfg = BrushGPTConfig(
+        vocab_size=VOCAB + int(null),
+        d_model=32,
+        n_heads=4,
+        enc_layers=2,
+        dec_layers=2,
+        max_len=256,
+        dropout=dropout,
+        null_token=null,
+    )
     return BrushGPT(cfg, layout)
 
 
@@ -132,7 +169,7 @@ def test_cached_decoding_matches_the_full_decoder():
     full = model.decode(inp, memory)
     cache = [DecoderLayerCache.empty(64) for _ in model.decoder]
     steps = [model.decode(inp[:, :1], memory, 0, cache)]
-    steps += [model.decode(inp[:, t:t + 1], memory, t, cache) for t in range(1, inp.size(1))]
+    steps += [model.decode(inp[:, t : t + 1], memory, t, cache) for t in range(1, inp.size(1))]
     assert torch.allclose(torch.cat(steps, 1), full, atol=1e-5)
 
 
@@ -144,7 +181,8 @@ def test_samples_follow_the_grammar_and_end_with_eos():
     grammar = StrokeGrammar(PAL_LAYOUT)
     state = grammar.start(4, "cpu")
     allowed = [PAL_LAYOUT.stroke_start_ids("cpu")] + [
-        torch.arange(OFFSETS[c], OFFSETS[c] + SIZES[c]) for c in range(1, len(SIZES))]
+        torch.arange(OFFSETS[c], OFFSETS[c] + SIZES[c]) for c in range(1, len(SIZES))
+    ]
     for i in range(60):
         tok = out[:, i]
         live = tok >= 0
@@ -154,7 +192,7 @@ def test_samples_follow_the_grammar_and_end_with_eos():
     for row in out:
         ended = (row == PAL_LAYOUT.eos).nonzero()
         if len(ended):
-            assert torch.all(row[int(ended[0]) + 1:] == -1)
+            assert torch.all(row[int(ended[0]) + 1 :] == -1)
 
 
 def test_guidance_one_is_the_conditional_model():
@@ -182,11 +220,22 @@ def test_checkpoint_round_trip(tmp_path: Path):
 # ----------------------------------------------------------------------------------- equivalence with the reference
 def reference_model(layout: TokenLayout = LAYOUT, dropout: float = 0.0, null: bool = True, seed: int = 0):
     ea = reference("sellanything_ml.sketch.edit_arch")
-    cfg = ea.Config(arch="encdec", layout="free", d_model=32, n_heads=4, enc_layers=2, dec_layers=2, max_len=256,
-                    vocab=VOCAB + int(null), dropout=dropout, cond_drop=0.15 if null else 0.0)
+    cfg = ea.Config(
+        arch="encdec",
+        layout="free",
+        d_model=32,
+        n_heads=4,
+        enc_layers=2,
+        dec_layers=2,
+        max_len=256,
+        vocab=VOCAB + int(null),
+        dropout=dropout,
+        cond_drop=0.15 if null else 0.0,
+    )
     torch.manual_seed(seed)
-    ref = ea.EditModel(cfg, list(layout.field_offsets), list(layout.field_sizes), list(layout.slots),
-                       list(layout.plan_markers))
+    ref = ea.EditModel(
+        cfg, list(layout.field_offsets), list(layout.field_sizes), list(layout.slots), list(layout.plan_markers)
+    )
     ref.palette_runs = dict(layout.palette)
     return ref
 
@@ -229,8 +278,17 @@ def test_sampling_matches_the_reference(layout: TokenLayout, guidance: float, te
     cond = torch.stack([COND, COND, COND])
     cond[1, 1] = SP["COND_unclear"]
     uncond = drop_attributes(cond, mine.cfg.null_id)
-    a = ref.sample_free(cond, cond.new_zeros(0), SP["SEP"], SP["BOS"], temperature, torch.Generator().manual_seed(4),
-                        n_max=80, uncond=uncond, guidance=guidance)
+    a = ref.sample_free(
+        cond,
+        cond.new_zeros(0),
+        SP["SEP"],
+        SP["BOS"],
+        temperature,
+        torch.Generator().manual_seed(4),
+        n_max=80,
+        uncond=uncond,
+        guidance=guidance,
+    )
     b = mine.sample(cond, 80, temperature, torch.Generator().manual_seed(4), uncond, guidance)
     assert torch.equal(a, b)
 
@@ -238,12 +296,18 @@ def test_sampling_matches_the_reference(layout: TokenLayout, guidance: float, te
 def test_grammar_matches_the_reference_on_random_streams():
     ref = reference_model(PAL_LAYOUT)
     grammar = StrokeGrammar(PAL_LAYOUT)
-    marks = (torch.tensor(ref.plan_runs), torch.tensor(list(ref.palette_runs)),
-             torch.tensor(list(ref.palette_runs.values())))
+    marks = (
+        torch.tensor(ref.plan_runs),
+        torch.tensor(list(ref.palette_runs)),
+        torch.tensor(list(ref.palette_runs.values())),
+    )
     g = torch.Generator().manual_seed(0)
     b = 16
-    step, inplan, left = torch.zeros(b, dtype=torch.long), torch.zeros(b, dtype=torch.bool), torch.zeros(b,
-                                                                                                        dtype=torch.long)
+    step, inplan, left = (
+        torch.zeros(b, dtype=torch.long),
+        torch.zeros(b, dtype=torch.bool),
+        torch.zeros(b, dtype=torch.long),
+    )
     state = grammar.start(b, "cpu")
     start_ids = PAL_LAYOUT.stroke_start_ids("cpu")
     for _ in range(200):
@@ -270,9 +334,14 @@ def test_real_checkpoint_matches_the_reference_on_a_real_painting():
     ref = ea.EditModel(ea.Config(**ck["config"]), pairs.offsets, pairs.sizes, pairs.slots, pairs.plan_runs).eval()
     ref.palette_runs = pairs.palette_runs
     ref.load_state_dict(ck["model"])
-    layout = TokenLayout(bos=pairs.specials.index("BOS"), slots=tuple(pairs.slots),
-                         field_offsets=tuple(pairs.offsets), field_sizes=tuple(pairs.sizes),
-                         plan_markers=tuple(pairs.plan_runs), palette=tuple(pairs.palette_runs.items()))
+    layout = TokenLayout(
+        bos=pairs.specials.index("BOS"),
+        slots=tuple(pairs.slots),
+        field_offsets=tuple(pairs.offsets),
+        field_sizes=tuple(pairs.sizes),
+        plan_markers=tuple(pairs.plan_runs),
+        palette=tuple(pairs.palette_runs.items()),
+    )
     mine = load_checkpoint(ck, layout).eval()
     sep, bos = pairs.specials.index("SEP"), pairs.specials.index("BOS")
     item = pairs.gens["held"][0]

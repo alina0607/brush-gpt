@@ -33,8 +33,12 @@ def main() -> None:
     ap.add_argument("--eval-every", type=int, default=d.eval_every)
     ap.add_argument("--eval-limit", type=int, default=d.eval_limit, help="score only the first N eyes (0: all)")
     ap.add_argument("--log-every", type=int, default=d.log_every)
-    ap.add_argument("--sample-every", type=int, default=d.sample_every,
-                    help="also sample validation eyes and check their geometry (0: never)")
+    ap.add_argument(
+        "--sample-every",
+        type=int,
+        default=d.sample_every,
+        help="also sample validation eyes and check their geometry (0: never)",
+    )
     ap.add_argument("--sample-n", type=int, default=d.sample_n)
     ap.add_argument("--stop-after-min", type=float, default=0.0, help="stop after this many minutes (0: never)")
     ap.add_argument("--seed", type=int, default=0)
@@ -42,10 +46,22 @@ def main() -> None:
     a = ap.parse_args()
 
     data = EyeData(a.data)
-    cfg = EyeTrainConfig(steps=a.steps, batch=a.batch, lr=a.lr, warmup=a.warmup, weight_decay=a.weight_decay,
-                         cond_drop=a.cond_drop, balance_cats=a.balance_cats, eval_every=a.eval_every,
-                         eval_limit=a.eval_limit, log_every=a.log_every, sample_every=a.sample_every,
-                         sample_n=a.sample_n, stop_after_min=a.stop_after_min, seed=a.seed)
+    cfg = EyeTrainConfig(
+        steps=a.steps,
+        batch=a.batch,
+        lr=a.lr,
+        warmup=a.warmup,
+        weight_decay=a.weight_decay,
+        cond_drop=a.cond_drop,
+        balance_cats=a.balance_cats,
+        eval_every=a.eval_every,
+        eval_limit=a.eval_limit,
+        log_every=a.log_every,
+        sample_every=a.sample_every,
+        sample_n=a.sample_n,
+        stop_after_min=a.stop_after_min,
+        seed=a.seed,
+    )
     train(data, model_config(data, a.d_model, a.layers, a.heads, a.dropout), cfg, a.out, resolve_device(a.device))
 
 

@@ -32,8 +32,12 @@ def main() -> None:
     ap.add_argument("--enc-layers", type=int, default=4)
     ap.add_argument("--dec-layers", type=int, default=3)
     ap.add_argument("--dropout", type=float, default=0.0, help="training only: embeddings, attention, residuals")
-    ap.add_argument("--cond-drop", type=float, default=0.0,
-                    help="share of paintings trained without their attributes (enables guidance)")
+    ap.add_argument(
+        "--cond-drop",
+        type=float,
+        default=0.0,
+        help="share of paintings trained without their attributes (enables guidance)",
+    )
     ap.add_argument("--balance-cats", action="store_true", help="draw a cat first, then one of its paintings")
     ap.add_argument("--eval-every", type=int, default=250)
     ap.add_argument("--eval-paintings", type=int, default=60, help="held paintings scored per evaluation")
@@ -44,12 +48,26 @@ def main() -> None:
 
     device = resolve_device(a.device)
     data = PaintingData(a.data, device)
-    model_cfg = BrushGPTConfig(vocab_size=data.vocab + (1 if a.cond_drop > 0 else 0), d_model=a.d_model,
-                               enc_layers=a.enc_layers, dec_layers=a.dec_layers, dropout=a.dropout,
-                               null_token=a.cond_drop > 0)
-    train_cfg = TrainConfig(steps=a.steps, accum=a.accum, lr=a.lr, weight_decay=a.weight_decay, cond_drop=a.cond_drop,
-                            balance_cats=a.balance_cats, eval_every=a.eval_every, eval_paintings=a.eval_paintings,
-                            stop_after_min=a.stop_after_min, seed=a.seed)
+    model_cfg = BrushGPTConfig(
+        vocab_size=data.vocab + (1 if a.cond_drop > 0 else 0),
+        d_model=a.d_model,
+        enc_layers=a.enc_layers,
+        dec_layers=a.dec_layers,
+        dropout=a.dropout,
+        null_token=a.cond_drop > 0,
+    )
+    train_cfg = TrainConfig(
+        steps=a.steps,
+        accum=a.accum,
+        lr=a.lr,
+        weight_decay=a.weight_decay,
+        cond_drop=a.cond_drop,
+        balance_cats=a.balance_cats,
+        eval_every=a.eval_every,
+        eval_paintings=a.eval_paintings,
+        stop_after_min=a.stop_after_min,
+        seed=a.seed,
+    )
     train(data, model_cfg, train_cfg, a.out, device)
 
 

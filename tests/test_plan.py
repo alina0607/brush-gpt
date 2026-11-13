@@ -30,9 +30,13 @@ from brushgpt.plan import (
 )
 
 # real cats: (repaint input shard, name); the last has no nose in its plan
-REAL_CATS = ((0, "afhq__flickr_cat_000014"), (11, "cat__CAT_DATASET_01__CAT_00__00000001_017"),
-             (10, "afhq__pixabay_cat_004772"), (11, "cat__CAT_DATASET_01__CAT_00__00000002_008"))
-TEMPLATE_SHARDS = range(12)          # the 6,000 cats the shipped template was fitted to
+REAL_CATS = (
+    (0, "afhq__flickr_cat_000014"),
+    (11, "cat__CAT_DATASET_01__CAT_00__00000001_017"),
+    (10, "afhq__pixabay_cat_004772"),
+    (11, "cat__CAT_DATASET_01__CAT_00__00000002_008"),
+)
+TEMPLATE_SHARDS = range(12)  # the 6,000 cats the shipped template was fitted to
 
 
 def reference(module: str):
@@ -59,8 +63,9 @@ def ellipse(cx: float, cy: float, rx: float, ry: float, n: int = 16) -> np.ndarr
     return np.c_[cx + rx * np.cos(t), cy + ry * np.sin(t)]
 
 
-POINTS = np.array([[95, 120], [161, 120], [128, 182], [50, 95], [62, 28], [100, 72],
-                   [156, 72], [194, 28], [206, 95]], float)
+POINTS = np.array(
+    [[95, 120], [161, 120], [128, 182], [50, 95], [62, 28], [100, 72], [156, 72], [194, 28], [206, 95]], float
+)
 
 
 # ------------------------------------------------------------------ unit tests
@@ -68,14 +73,14 @@ def test_shipped_template_is_in_the_face_frame():
     t = load_head_template()
     assert t.shape == (3, 9)
     assert np.allclose(t[:, 0], (-0.5, 0, 0), atol=1e-6) and np.allclose(t[:, 1], (0.5, 0, 0), atol=1e-6)
-    assert t[1, 2] > 0.5                                         # the mouth below the eyes
-    assert t[1, [4, 7]].max() < -1.0                             # the ear tips above them
-    assert t[2, [3, 4, 5, 6, 7, 8]].mean() > t[2, 2]             # the ears behind the mouth
+    assert t[1, 2] > 0.5  # the mouth below the eyes
+    assert t[1, [4, 7]].max() < -1.0  # the ear tips above them
+    assert t[2, [3, 4, 5, 6, 7, 8]].mean() > t[2, 2]  # the ears behind the mouth
 
 
 def random_views(template: np.ndarray, n: int, seed: int = 0) -> tuple[np.ndarray, list]:
     rng = np.random.default_rng(seed)
-    angles = rng.uniform(-30, 30, (n, 3))                        # roll, pitch, yaw
+    angles = rng.uniform(-30, 30, (n, 3))  # roll, pitch, yaw
     views = []
     for a in angles:
         R = Rotation.from_euler("ZXY", a, degrees=True).as_matrix()
@@ -113,19 +118,19 @@ def test_head_outline_skips_the_uncertain_chin_and_flags_the_ears():
     for ear in ((3, 4, 5), (6, 7, 8)):
         cat |= Polygon(POINTS[list(ear)]).contains_points(q).reshape(256, 256)
     tri = cat.astype(np.uint8)
-    tri[(yy > 180) & cat] = 2                                    # the chin: uncertain
+    tri[(yy > 180) & cat] = 2  # the chin: uncertain
     tri[(yy > 180) & ~cat & (np.abs(xx - 128) < 90)] = 2
     runs = head_outline(tri, POINTS)
     assert runs
     xy = np.concatenate([r[:, :2] for r in runs])
-    assert xy[:, 1].max() < 186                                  # no line along the uncertain region
+    assert xy[:, 1].max() < 186  # no line along the uncertain region
     for r in runs:
-        chords = np.linalg.norm(np.diff(r[:, :2], axis=0), axis=1)    # HEAD_STEP apart along the pixel contour
-        assert np.all((chords > 0.5 * HEAD_STEP) & (chords <= HEAD_STEP + 1e-9))   # corners cut the chord
+        chords = np.linalg.norm(np.diff(r[:, :2], axis=0), axis=1)  # HEAD_STEP apart along the pixel contour
+        assert np.all((chords > 0.5 * HEAD_STEP) & (chords <= HEAD_STEP + 1e-9))  # corners cut the chord
         assert set(np.unique(r[:, 2])) <= {0.0, 1.0}
     flagged = np.concatenate(runs)
-    assert flagged[flagged[:, 1] < 40, 2].all()                  # the ear tips
-    assert not flagged[flagged[:, 1] > 150, 2].any()             # the cheeks
+    assert flagged[flagged[:, 1] < 40, 2].all()  # the ear tips
+    assert not flagged[flagged[:, 1] > 150, 2].any()  # the cheeks
 
 
 def test_pupil_is_the_dark_slit_inside_the_eye():
@@ -136,14 +141,14 @@ def test_pupil_is_the_dark_slit_inside_the_eye():
     p = pupil_ellipse(lum, ellipse(100, 120, 18, 12))
     assert p is not None
     assert np.allclose(p.centre, (100, 120), atol=0.1)
-    assert p.radii[0] > 2 * p.radii[1]                           # tall and thin
-    assert abs(abs(p.angle) - np.pi / 2) < 0.1                   # the long axis is vertical
-    assert pupil_ellipse(np.full((256, 256), 0.6, np.float32), ellipse(100, 120, 2, 2)) is None   # too small an eye
+    assert p.radii[0] > 2 * p.radii[1]  # tall and thin
+    assert abs(abs(p.angle) - np.pi / 2) < 0.1  # the long axis is vertical
+    assert pupil_ellipse(np.full((256, 256), 0.6, np.float32), ellipse(100, 120, 2, 2)) is None  # too small an eye
 
 
 def test_mouth_follows_the_dark_line_below_the_nose():
     lum = np.full((256, 256), 0.7, np.float32)
-    lum[190:192, 100:157] = 0.1                                  # a dark line just below the mouth point
+    lum[190:192, 100:157] = 0.1  # a dark line just below the mouth point
     nose = ellipse(128, 165, 10, 6, 12)
     mouth = mouth_line(lum, POINTS, nose, float(np.linalg.norm(POINTS[0] - POINTS[1])))
     assert len(mouth) > 5
@@ -165,21 +170,33 @@ def test_plan_tokens_layout():
     assert words[:5] == ["[plan]", "[pose]", f"a{ANGLE_BINS // 2}", "a0", f"a{ANGLE_BINS - 1}"]
     assert words[-1] == "[/plan]" and "[nose]" not in words
     assert words.count("[head]") == 2 and words.count("[eye]") == 2 and words.count("[pupil]") == 1
-    head2 = words[words.index("[head]", 3 + 2 * 6 + 2):][:3]
-    assert head2 == ["[head]", "x10", "y255"]                    # rounded and clipped to the grid
+    head2 = words[words.index("[head]", 3 + 2 * 6 + 2) :][:3]
+    assert head2 == ["[head]", "x10", "y255"]  # rounded and clipped to the grid
     i = words.index("[pupil]")
-    assert words[i:i + 6] == ["[pupil]", "x96", "y120", "r63", "r2", "a32"]   # radii capped at 63
-    assert words[words.index("[mouth]"):][:6] == ["[mouth]", "x110", "y190", "x146", "y190", "[end]"]
+    assert words[i : i + 6] == ["[pupil]", "x96", "y120", "r63", "r2", "a32"]  # radii capped at 63
+    assert words[words.index("[mouth]") :][:6] == ["[mouth]", "x110", "y190", "x146", "y190", "[end]"]
 
 
 def test_saved_plan_has_the_painters_keys(tmp_path):
     p = small_plan()
-    p.head = [np.zeros((4, 3)), np.ones((4, 3))]                 # equal lengths: must stay a 1-D list of runs
+    p.head = [np.zeros((4, 3)), np.ones((4, 3))]  # equal lengths: must stay a 1-D list of runs
     p.tokens = ["[plan]", "[/plan]"]
     save_plan(tmp_path / "cat.npz", p)
     z = np.load(tmp_path / "cat.npz", allow_pickle=True)
-    assert set(z.files) == {"yaw", "pitch", "roll", "residual", "R", "head", "eyes", "pupils", "nose", "mouth",
-                            "tokens", "version"}
+    assert set(z.files) == {
+        "yaw",
+        "pitch",
+        "roll",
+        "residual",
+        "R",
+        "head",
+        "eyes",
+        "pupils",
+        "nose",
+        "mouth",
+        "tokens",
+        "version",
+    }
     assert z["head"].shape == (2,) and z["head"].dtype == object and z["head"][1].shape == (4, 3)
     assert z["eyes"].shape == (2, EYE_POINTS, 2) and z["nose"].shape == (0, 2)
     assert np.allclose(z["pupils"][0], (95.5, 120.5, 80.0, 2.6, np.pi / 2, 0.2)) and np.isnan(z["pupils"][1]).all()
@@ -188,6 +205,7 @@ def test_saved_plan_has_the_painters_keys(tmp_path):
 
 def test_plan_of_a_synthetic_cat_finds_its_eyes():
     from synthetic import synthetic_inputs
+
     inputs = synthetic_inputs()
     plan = make_plan(inputs.target, inputs.tri, inputs.points, load_head_template(), sam())
     assert len(plan.eyes) == 2 and all(e.shape == (EYE_POINTS, 2) for e in plan.eyes)
@@ -262,13 +280,15 @@ def test_sam_free_parts_match_the_reference(shard, name):
     pupils = [pupil_ellipse(lum, e) for e in eyes]
     ref_pupils = [SP.pupil(lum, e) for e in eyes]
     mouth = mouth_line(lum, points, nose, d)
-    assert plan_tokens(pose, head, eyes, pupils, nose, mouth) == SP.plan_tokens(ref_pose, ref_head, eyes, ref_pupils,
-                                                                                  nose, mouth)
+    assert plan_tokens(pose, head, eyes, pupils, nose, mouth) == SP.plan_tokens(
+        ref_pose, ref_head, eyes, ref_pupils, nose, mouth
+    )
 
 
 @functools.cache
 def both_plans(shard: int, name: str):
     import torch
+
     SP = reference("sketch_plan")
     torch.set_num_threads(2)
     target, tri, points = real_cat(shard, name)

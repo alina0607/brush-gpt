@@ -57,38 +57,38 @@ from .cat import EYE_APART_GROW, CatInputs, ear_triangles, eye_side, one_eye, pr
 from .fur import orientation
 
 SIDE = 512
-ITERS = 150                   # Adam steps per layer
+ITERS = 150  # Adam steps per layer
 LR = 0.05
 PROTECT = 10.0
-LID_SMOOTH = 4.0              # px: the plan's eye outline smoothed along its length before the lid is laid on it
-SHADOW_IN, SHADOW_STEP = 4.0, 5.0   # the lid's shadow: px in from the eye outline, px between its strokes
-LID_STEP = 6.0                # px between lid liners along the eye outline (each twice as long: they overlap)
-CATCH_MIN, CATCH_MAX = 0.70, 2      # a catchlight: at least this light and 0.3 over the eye's median; at most this
-                                    # many an eye
-CATCH_GLINT, CATCH_SIZE = 0.25, 0.15   # ... and this much over the 9 px median about it; at most this share of the
-                                       # eye's width across
-EAR_EMPHASIS = 0.3            # the ear's shadow and back this much darker than the photo's darkest there
-WHISKER_BAND = 70             # px past the head where whiskers are free (no loss, no protection)
-WHISKER_NEAR = 10             # px about a whisker's root where its colour is read from the photo
-WHISKER_TOP = 0.95            # its colour: the light-line pixels at or above this quantile of lightness
-DOT_RING, DOT_CONTRAST, DOT_MIN, DOT_MAX = 0.30, 0.10, 4, 40   # whisker dots: on a muzzle at least this light
-                                                                # (blurred), this much darker than around them;
-                                                                # fewer than DOT_MIN are none, at most DOT_MAX
-DOT_DARK = 0.3                # a dark colour read from the photo: its pixels at or below this quantile of lightness
-DOT_ROUND = 0.35              # a dot is round: its two curvatures within this ratio (a whisker's shadow is not)
-BROW_MIN, BROW_MAX = 2, 4     # brow whiskers a side
-BROW_UP, BROW_SIDE = 0.6, 0.05   # brow whiskers root at most this far above the eye, this far beyond its width
-TINT_BLUR = 2.0               # px: the paint under the ear's rim, blurred
-VARY = (0.6, 1.4)             # strokes with a set direction: each one's length and width, from its hash
-EAR_BACK_IN, EAR_FILL_IN, EAR_RIM_IN = 6.0, 4.0, 1.0   # px in from the outline: the ear's back, its fill, its rim
-TRACE_TOP, TRACE_LEN, TRACE_MAX = 80, 7, 0.3     # traced ear hairs: ridge percentile, shortest hair (px), longest
-                                                 # (share of the ear's height)
-TRACE_CAP, TRACE_CLAIM = 60, 2                   # at most this many hairs a cat; px round a traced hair taken by it
-TRACE_WIDTH = (0.15, 1.5, 3.0)                   # a hair clump's width: share of its length, at least, at most (px)
-TRACE_TAIL, TRACE_HALF = 0.5, 0.5                # a traced hair goes on past its tip (at most this share of its
-                                                 # length) while the photo there stays this share as light
-TRACE_REACH = 1.3                                # the clump's stroke this many times the hair's length (the rake
-                                                 # fades out over its end)
+LID_SMOOTH = 4.0  # px: the plan's eye outline smoothed along its length before the lid is laid on it
+SHADOW_IN, SHADOW_STEP = 4.0, 5.0  # the lid's shadow: px in from the eye outline, px between its strokes
+LID_STEP = 6.0  # px between lid liners along the eye outline (each twice as long: they overlap)
+CATCH_MIN, CATCH_MAX = 0.70, 2  # a catchlight: at least this light and 0.3 over the eye's median; at most this
+# many an eye
+CATCH_GLINT, CATCH_SIZE = 0.25, 0.15  # ... and this much over the 9 px median about it; at most this share of the
+# eye's width across
+EAR_EMPHASIS = 0.3  # the ear's shadow and back this much darker than the photo's darkest there
+WHISKER_BAND = 70  # px past the head where whiskers are free (no loss, no protection)
+WHISKER_NEAR = 10  # px about a whisker's root where its colour is read from the photo
+WHISKER_TOP = 0.95  # its colour: the light-line pixels at or above this quantile of lightness
+DOT_RING, DOT_CONTRAST, DOT_MIN, DOT_MAX = 0.30, 0.10, 4, 40  # whisker dots: on a muzzle at least this light
+# (blurred), this much darker than around them;
+# fewer than DOT_MIN are none, at most DOT_MAX
+DOT_DARK = 0.3  # a dark colour read from the photo: its pixels at or below this quantile of lightness
+DOT_ROUND = 0.35  # a dot is round: its two curvatures within this ratio (a whisker's shadow is not)
+BROW_MIN, BROW_MAX = 2, 4  # brow whiskers a side
+BROW_UP, BROW_SIDE = 0.6, 0.05  # brow whiskers root at most this far above the eye, this far beyond its width
+TINT_BLUR = 2.0  # px: the paint under the ear's rim, blurred
+VARY = (0.6, 1.4)  # strokes with a set direction: each one's length and width, from its hash
+EAR_BACK_IN, EAR_FILL_IN, EAR_RIM_IN = 6.0, 4.0, 1.0  # px in from the outline: the ear's back, its fill, its rim
+TRACE_TOP, TRACE_LEN, TRACE_MAX = 80, 7, 0.3  # traced ear hairs: ridge percentile, shortest hair (px), longest
+# (share of the ear's height)
+TRACE_CAP, TRACE_CLAIM = 60, 2  # at most this many hairs a cat; px round a traced hair taken by it
+TRACE_WIDTH = (0.15, 1.5, 3.0)  # a hair clump's width: share of its length, at least, at most (px)
+TRACE_TAIL, TRACE_HALF = 0.5, 0.5  # a traced hair goes on past its tip (at most this share of its
+# length) while the photo there stays this share as light
+TRACE_REACH = 1.3  # the clump's stroke this many times the hair's length (the rake
+# fades out over its end)
 EYE_STAGE = 2
 
 
@@ -98,32 +98,32 @@ class Stage:
     they are placed and fitted."""
 
     name: str
-    kind: str                       # the brush (brushes.KINDS)
-    n: int                          # strokes (fixed places: as many as there are places)
-    length: float                   # px; strokes fit within size_range times this
+    kind: str  # the brush (brushes.KINDS)
+    n: int  # strokes (fixed places: as many as there are places)
+    length: float  # px; strokes fit within size_range times this
     width: float
     alpha: tuple[float, float]
-    turn_deg: float | None          # how far from the fur's (or the set) direction; None: free, starting along the
-                                    # photo's local structure
-    place: str                      # how strokes are placed: error, edges, zone, ear_dark, whiskers, or a fixed rule
-                                    # (FIXED_PLACES)
-    only: str | None = None         # a part (eye, eye_rim, pupil, nose, mouth, ears, ear_inner) outside which
-                                    # changing the canvas costs `protect`
-    blur: float = 0.0               # fit to the photo blurred this many px on the cat
-    protect: float = PROTECT        # what changing a protected pixel costs, times the change
-    inset: int = 0                  # strokes start at least this many px inside the head
-    band: int = 0                   # px outside the head that are free (no loss, no protection)
-    fixed_place: bool = False       # positions are not fitted
-    no_ears: bool = False           # no strokes start on the ears
-    tint: float | None = None       # colour = the paint just inside the ear's outline plus at most this much a channel
-    radial: bool = False            # the place is the stroke's root; the stroke runs away from it
-    photo_colour: str | None = None # colour read from the photo near the place, not fitted: "light" (the brightest of
-                                    # the light-line pixels), "dark" (the darkest pixels), "bright" (a catchlight's)
-    avoid: tuple[str, ...] = ()     # parts the strokes must not paint over (protected as the paper is)
-    size_range: tuple[float, float] = (0.5, 1.5)    # strokes' length and width, times the stage's
+    turn_deg: float | None  # how far from the fur's (or the set) direction; None: free, starting along the
+    # photo's local structure
+    place: str  # how strokes are placed: error, edges, zone, ear_dark, whiskers, or a fixed rule
+    # (FIXED_PLACES)
+    only: str | None = None  # a part (eye, eye_rim, pupil, nose, mouth, ears, ear_inner) outside which
+    # changing the canvas costs `protect`
+    blur: float = 0.0  # fit to the photo blurred this many px on the cat
+    protect: float = PROTECT  # what changing a protected pixel costs, times the change
+    inset: int = 0  # strokes start at least this many px inside the head
+    band: int = 0  # px outside the head that are free (no loss, no protection)
+    fixed_place: bool = False  # positions are not fitted
+    no_ears: bool = False  # no strokes start on the ears
+    tint: float | None = None  # colour = the paint just inside the ear's outline plus at most this much a channel
+    radial: bool = False  # the place is the stroke's root; the stroke runs away from it
+    photo_colour: str | None = None  # colour read from the photo near the place, not fitted: "light" (the brightest of
+    # the light-line pixels), "dark" (the darkest pixels), "bright" (a catchlight's)
+    avoid: tuple[str, ...] = ()  # parts the strokes must not paint over (protected as the paper is)
+    size_range: tuple[float, float] = (0.5, 1.5)  # strokes' length and width, times the stage's
     light_top: float = WHISKER_TOP  # photo_colour "light": the light-line pixels at or above this quantile
-    emphasis: float = 0.0           # photo colours pushed this share of the way to black ("dark") or white ("light")
-    fit_size: bool = True           # False: the sizes the places came with are kept
+    emphasis: float = 0.0  # photo colours pushed this share of the way to black ("dark") or white ("light")
+    fit_size: bool = True  # False: the sizes the places came with are kept
 
     @property
     def brush(self) -> Brush:
@@ -131,41 +131,171 @@ class Stage:
 
 
 STAGES = {
-    1: [Stage("block-in: stick", "stick", 40, 200, 110, (0.3, 0.9), 40, "error", blur=6.0, protect=40.0, inset=6,
-              band=10),
-        Stage("block-in: wet", "wet", 120, 90, 32, (0.5, 1.0), 25, "error", blur=6.0, protect=100.0, inset=6, band=10)],
-    2: [Stage("iris base", "wet", 30, 24, 10, (0.7, 1.0), None, "zone", "eye"),
+    1: [
+        Stage(
+            "block-in: stick", "stick", 40, 200, 110, (0.3, 0.9), 40, "error", blur=6.0, protect=40.0, inset=6, band=10
+        ),
+        Stage("block-in: wet", "wet", 120, 90, 32, (0.5, 1.0), 25, "error", blur=6.0, protect=100.0, inset=6, band=10),
+    ],
+    2: [
+        Stage("iris base", "wet", 30, 24, 10, (0.7, 1.0), None, "zone", "eye"),
         Stage("irises", "wet", 100, 12, 5, (0.6, 1.0), None, "zone", "eye"),
-        Stage("lid shadow", "wet", 0, 16, 8, (0.15, 0.8), 8, "lid_shadow", "eye", fixed_place=True,
-              size_range=(0.7, 1.3)),
+        Stage(
+            "lid shadow", "wet", 0, 16, 8, (0.15, 0.8), 8, "lid_shadow", "eye", fixed_place=True, size_range=(0.7, 1.3)
+        ),
         Stage("pupils", "dot", 0, 24, 6, (0.8, 1.0), 10, "pupil_plan", "pupil", fixed_place=True, photo_colour="dark"),
-        Stage("lids", "liner", 0, 2 * LID_STEP, 3, (0.6, 1.0), 5, "lid", "eye_rim", fixed_place=True,
-              size_range=(0.85, 1.15), photo_colour="dark"),
-        Stage("highlights", "dot", 0, 6, 6, (0.85, 1.0), None, "catchlight", "eye", fixed_place=True,
-              photo_colour="bright")],
+        Stage(
+            "lids",
+            "liner",
+            0,
+            2 * LID_STEP,
+            3,
+            (0.6, 1.0),
+            5,
+            "lid",
+            "eye_rim",
+            fixed_place=True,
+            size_range=(0.85, 1.15),
+            photo_colour="dark",
+        ),
+        Stage(
+            "highlights",
+            "dot",
+            0,
+            6,
+            6,
+            (0.85, 1.0),
+            None,
+            "catchlight",
+            "eye",
+            fixed_place=True,
+            photo_colour="bright",
+        ),
+    ],
     3: [Stage("form", "wet", 160, 70, 24, (0.4, 1.0), 20, "error", avoid=("eye",))],
     4: [Stage("edges", "drag", 140, 60, 18, (0.4, 1.0), 15, "edges", band=14, avoid=("eye",), no_ears=True)],
     5: [Stage("markings", "wet", 160, 34, 11, (0.3, 0.9), 20, "error", avoid=("eye",))],
-    6: [Stage("nose", "wet", 40, 14, 6, (0.6, 1.0), None, "zone", "nose"),
-        Stage("mouth", "pencil", 14, 12, 1.8, (0.6, 1.0), None, "zone", "mouth")],
-    7: [Stage("ear back", "wet", 0, 18, 9, (0.6, 1.0), 10, "ear_back", "ears", fixed_place=True, photo_colour="dark",
-              emphasis=EAR_EMPHASIS, size_range=(0.8, 1.2)),
+    6: [
+        Stage("nose", "wet", 40, 14, 6, (0.6, 1.0), None, "zone", "nose"),
+        Stage("mouth", "pencil", 14, 12, 1.8, (0.6, 1.0), None, "zone", "mouth"),
+    ],
+    7: [
+        Stage(
+            "ear back",
+            "wet",
+            0,
+            18,
+            9,
+            (0.6, 1.0),
+            10,
+            "ear_back",
+            "ears",
+            fixed_place=True,
+            photo_colour="dark",
+            emphasis=EAR_EMPHASIS,
+            size_range=(0.8, 1.2),
+        ),
         Stage("ear fill", "wet", 0, 16, 9, (0.7, 1.0), 10, "ear_fill", None, fixed_place=True, size_range=(0.8, 1.2)),
-        Stage("ear rim", "liner", 0, 2 * LID_STEP, 2.4, (0.8, 1.0), 5, "ear_rim", "ears", fixed_place=True,
-              size_range=(0.9, 1.1), tint=0.03),
-        Stage("ear shadow", "wet", 40, 14, 6, (0.4, 1.0), None, "ear_dark", "ear_inner", photo_colour="dark",
-              emphasis=EAR_EMPHASIS),
-        Stage("ear tufts", "rake", 0, 20, 4, (0.4, 0.75), 5, "ear_traced", "ear_inner", fixed_place=True,
-              photo_colour="light", light_top=0.98, emphasis=0.25, size_range=(0.25, 3.0), fit_size=False),
-        Stage("muzzle dots", "dot", 0, 4, 4, (0.6, 1.0), None, "dots", fixed_place=True, photo_colour="dark",
-              avoid=("nose", "mouth")),
-        Stage("whiskers", "whisker", 28, 140, 1.6, (0.7, 1.0), 30, "whiskers", band=WHISKER_BAND, radial=True,
-              photo_colour="light", avoid=("nose", "mouth"), fixed_place=True),
-        Stage("brow whiskers", "whisker", 0, 120, 1.4, (0.7, 1.0), 10, "brow", band=WHISKER_BAND, radial=True,
-              photo_colour="light", fixed_place=True)],
+        Stage(
+            "ear rim",
+            "liner",
+            0,
+            2 * LID_STEP,
+            2.4,
+            (0.8, 1.0),
+            5,
+            "ear_rim",
+            "ears",
+            fixed_place=True,
+            size_range=(0.9, 1.1),
+            tint=0.03,
+        ),
+        Stage(
+            "ear shadow",
+            "wet",
+            40,
+            14,
+            6,
+            (0.4, 1.0),
+            None,
+            "ear_dark",
+            "ear_inner",
+            photo_colour="dark",
+            emphasis=EAR_EMPHASIS,
+        ),
+        Stage(
+            "ear tufts",
+            "rake",
+            0,
+            20,
+            4,
+            (0.4, 0.75),
+            5,
+            "ear_traced",
+            "ear_inner",
+            fixed_place=True,
+            photo_colour="light",
+            light_top=0.98,
+            emphasis=0.25,
+            size_range=(0.25, 3.0),
+            fit_size=False,
+        ),
+        Stage(
+            "muzzle dots",
+            "dot",
+            0,
+            4,
+            4,
+            (0.6, 1.0),
+            None,
+            "dots",
+            fixed_place=True,
+            photo_colour="dark",
+            avoid=("nose", "mouth"),
+        ),
+        Stage(
+            "whiskers",
+            "whisker",
+            28,
+            140,
+            1.6,
+            (0.7, 1.0),
+            30,
+            "whiskers",
+            band=WHISKER_BAND,
+            radial=True,
+            photo_colour="light",
+            avoid=("nose", "mouth"),
+            fixed_place=True,
+        ),
+        Stage(
+            "brow whiskers",
+            "whisker",
+            0,
+            120,
+            1.4,
+            (0.7, 1.0),
+            10,
+            "brow",
+            band=WHISKER_BAND,
+            radial=True,
+            photo_colour="light",
+            fixed_place=True,
+        ),
+    ],
 }
-FIXED_PLACES = ("dots", "pupil_plan", "lid", "lid_shadow", "catchlight", "brow", "ear_back", "ear_fill", "ear_rim",
-                "ear_traced")
+FIXED_PLACES = (
+    "dots",
+    "pupil_plan",
+    "lid",
+    "lid_shadow",
+    "catchlight",
+    "brow",
+    "ear_back",
+    "ear_fill",
+    "ear_rim",
+    "ear_traced",
+)
 
 
 def layer_brush(stage: int, j: int) -> Brush:
@@ -184,8 +314,8 @@ def bright_lines(lum: np.ndarray, s: int) -> np.ndarray:
     h, w = lum.shape
     out = np.zeros_like(lum)
     for dy, dx in ((0, s), (s, 0), (s, s), (s, -s)):
-        a = p[s + dy:s + dy + h, s + dx:s + dx + w]
-        b = p[s - dy:s - dy + h, s - dx:s - dx + w]
+        a = p[s + dy : s + dy + h, s + dx : s + dx + w]
+        b = p[s - dy : s - dy + h, s - dx : s - dx + w]
         out = np.maximum(out, lum - np.maximum(a, b))
     return out.clip(0)
 
@@ -200,7 +330,7 @@ def ridges(lum: np.ndarray) -> np.ndarray:
     ridge = np.zeros_like(lum)
     for sg in (0.8, 1.2):
         l2 = hessian_matrix_eigvals(hessian_matrix(lum, sigma=sg, order="rc", use_gaussian_derivatives=True))[1]
-        ridge = np.maximum(ridge, np.clip(-l2, 0, None) * sg ** 2)
+        ridge = np.maximum(ridge, np.clip(-l2, 0, None) * sg**2)
     return ridge
 
 
@@ -209,13 +339,13 @@ def ridges(lum: np.ndarray) -> np.ndarray:
 class Strokes:
     """A layer's free parameters while it is fitted; `stroke_params` maps them to canvas units."""
 
-    xy: torch.Tensor                # logits of the centre in [0, SIDE)
-    size: torch.Tensor              # logits within size_range times the stage's (length, width)
-    angle: torch.Tensor             # free: radians; bound: the unbounded turn from the fur (or from `base`)
+    xy: torch.Tensor  # logits of the centre in [0, SIDE)
+    size: torch.Tensor  # logits within size_range times the stage's (length, width)
+    angle: torch.Tensor  # free: radians; bound: the unbounded turn from the fur (or from `base`)
     colour: torch.Tensor
     alpha: torch.Tensor
-    base: torch.Tensor | None = None    # a direction set by the place (radians) instead of the fur's
-    under: torch.Tensor | None = None   # a colour set by the place (photo colours, or the paint the ear rim tints)
+    base: torch.Tensor | None = None  # a direction set by the place (radians) instead of the fur's
+    under: torch.Tensor | None = None  # a colour set by the place (photo colours, or the paint the ear rim tints)
 
     def tensors(self) -> list[torch.Tensor]:
         return [self.xy, self.size, self.angle, self.colour, self.alpha]
@@ -230,12 +360,12 @@ def stroke_params(s: Strokes, st: Stage, cat: dict) -> StrokeParams:
     else:
         if s.base is not None:
             along = s.base
-        else:                                                                    # the fur's line at the centre
+        else:  # the fur's line at the centre
             g = (xy.detach() / SIDE * 2 - 1).view(1, 1, -1, 2)
             f = F.grid_sample(cat["field"].permute(2, 0, 1)[None], g, align_corners=False)[0, :, 0].T
             along = 0.5 * torch.atan2(f[:, 1], f[:, 0])
         angle = along + math.radians(st.turn_deg) * torch.tanh(s.angle)
-    if st.radial:                                       # xy is the root: the stroke's centre half its length on
+    if st.radial:  # xy is the root: the stroke's centre half its length on
         xy = xy + 0.5 * lw[:, :1] * torch.stack([angle.cos(), angle.sin()], -1)
     lo, hi = st.alpha
     if s.under is None:
@@ -270,22 +400,22 @@ def place_map(st: Stage, cat: dict, canvas: torch.Tensor, goal: torch.Tensor) ->
         inside = inside & ~ndimage.binary_dilation(cat[zone], iterations=3)
     on_cat = inside.astype(np.float32)
     err = np.abs(target - canvas.numpy()).sum(-1) * on_cat
-    if st.place == "error":                            # where the painting is furthest from the photo
+    if st.place == "error":  # where the painting is furthest from the photo
         return err
     lum = luminance(target)
-    if st.place == "edges":                            # edges of values and of the head, where the painting misses
+    if st.place == "edges":  # edges of values and of the head, where the painting misses
         g = ndimage.gaussian_gradient_magnitude(lum, 2.0)
         rim = ndimage.binary_dilation(tri == 1, iterations=4) & ~ndimage.binary_erosion(tri == 1, iterations=4)
         m = (g / (g.max() + 1e-6) + 0.5 * rim) * ndimage.binary_dilation(tri == 1, iterations=2)
         if st.no_ears:
             m = m * ~cat["ears"]
         return m * (0.3 + err / (err.max() + 1e-6))
-    if st.place == "zone":                             # the part's misses
+    if st.place == "zone":  # the part's misses
         return np.abs(target - canvas.numpy()).sum(-1) * cat[st.only]
-    if st.place == "ear_dark":                         # the ear's shadows: its darkest 30% in the photo
+    if st.place == "ear_dark":  # the ear's shadows: its darkest 30% in the photo
         dark = cat["ear_inner"] & (lum <= np.quantile(lum[cat["ear_inner"]], 0.3))
         return (np.abs(target - canvas.numpy()).sum(-1) + 0.05) * dark + 1e-12
-    if st.place == "whiskers":                         # light lines on the whisker pads
+    if st.place == "whiskers":  # light lines on the whisker pads
         light = light_lines(lum)
         pads = cat["whisker_pad"] * ndimage.binary_erosion(tri == 1, iterations=4)
         return (light + 0.05 * light.max()) * pads + 1e-12
@@ -298,21 +428,24 @@ def muzzle_dots(cat: dict) -> tuple[np.ndarray, np.ndarray]:
     them and round (the darkness curves both ways, not along a line); the DOT_MAX clearest, in rows of about 6 px,
     top to bottom and left to right; none if fewer than DOT_MIN. (centres (n, 2), radii (n,))."""
     lum = luminance(cat["photo"])
-    zone = (cat["dot_pad"] & ndimage.binary_erosion(cat["tri"] == 1, iterations=2)
-            & ~ndimage.binary_dilation(cat["nose"] | cat["mouth"], iterations=3)
-            & (ndimage.gaussian_filter(lum, 4.0) >= DOT_RING))
+    zone = (
+        cat["dot_pad"]
+        & ndimage.binary_erosion(cat["tri"] == 1, iterations=2)
+        & ~ndimage.binary_dilation(cat["nose"] | cat["mouth"], iterations=3)
+        & (ndimage.gaussian_filter(lum, 4.0) >= DOT_RING)
+    )
     if not zone.any():
         return np.zeros((0, 2)), np.zeros(0)
     ys, xs = np.nonzero(zone)
     y0, y1, x0, x1 = max(ys.min() - 8, 0), ys.max() + 9, max(xs.min() - 8, 0), xs.max() + 9
     sub = lum[y0:y1, x0:x1]
-    yy, xx = np.mgrid[:sub.shape[0], :sub.shape[1]]
+    yy, xx = np.mgrid[: sub.shape[0], : sub.shape[1]]
     curv = {}
     found = []
     for y, x, sg in blob_log(1 - sub, min_sigma=0.8, max_sigma=2.5, num_sigma=5, threshold=0.02):
         if not zone[int(y) + y0, int(x) + x0]:
             continue
-        if sg not in curv:                                 # the dark side's curvatures at the blob's scale
+        if sg not in curv:  # the dark side's curvatures at the blob's scale
             curv[sg] = hessian_matrix_eigvals(hessian_matrix(sub, sigma=sg, order="rc", use_gaussian_derivatives=True))
         l1, l2 = curv[sg][0][int(y), int(x)], curv[sg][1][int(y), int(x)]
         if min(l1, l2) <= 0 or min(l1, l2) < DOT_ROUND * max(l1, l2):
@@ -344,8 +477,14 @@ def brow_roots(cat: dict) -> list[np.ndarray]:
             x0, x1, top = xs.min(), xs.max(), ys.min()
         else:
             x0, x1, top = p[e, 0] - 0.25 * d, p[e, 0] + 0.25 * d, p[e, 1] - 0.15 * d
-        zones.append((xx >= x0 - BROW_SIDE * d) & (xx <= x1 + BROW_SIDE * d) & (yy <= top - 2)
-                     & (yy >= top - BROW_UP * d) & (cat["tri"] == 1) & ~ear)
+        zones.append(
+            (xx >= x0 - BROW_SIDE * d)
+            & (xx <= x1 + BROW_SIDE * d)
+            & (yy <= top - 2)
+            & (yy >= top - BROW_UP * d)
+            & (cat["tri"] == 1)
+            & ~ear
+        )
     return zones
 
 
@@ -365,12 +504,17 @@ def brow_whiskers(cat: dict) -> tuple[np.ndarray, np.ndarray]:
         ex, ey = p[e]
         out = 1.0 if ex > mid else -1.0
         zone = (yy < ey - 0.15 * d) & (yy > ey - 1.4 * d) & (np.abs(xx - ex) < 0.9 * d)
-        lines = probabilistic_hough_line(skeletonize((ridge > np.percentile(ridge[zone], 95)) & zone), threshold=10,
-                                         line_length=int(0.2 * d), line_gap=5, rng=0)
+        lines = probabilistic_hough_line(
+            skeletonize((ridge > np.percentile(ridge[zone], 95)) & zone),
+            threshold=10,
+            line_length=int(0.2 * d),
+            line_gap=5,
+            rng=0,
+        )
         cands = []
         for a, b in lines:
             lo, hi = np.array(a, float), np.array(b, float)
-            if a[1] <= b[1]:                                              # lo: the lower end (larger y), the root
+            if a[1] <= b[1]:  # lo: the lower end (larger y), the root
                 lo, hi = hi, lo
             dx, dy = hi - lo
             length = math.hypot(dx, dy)
@@ -378,12 +522,14 @@ def brow_whiskers(cat: dict) -> tuple[np.ndarray, np.ndarray]:
                 cands.append((length, lo + 0.5, math.atan2(dy, dx)))
         kept = []
         for _length, lo, ang in sorted(cands, key=lambda c: -c[0]):
-            if all(np.linalg.norm(lo - k[0]) > 8 or abs(math.remainder(ang - k[1], 2 * math.pi)) > math.radians(12)
-                   for k in kept):
+            if all(
+                np.linalg.norm(lo - k[0]) > 8 or abs(math.remainder(ang - k[1], 2 * math.pi)) > math.radians(12)
+                for k in kept
+            ):
                 kept.append((lo, ang))
         kept = kept[:BROW_MAX]
         oy, ox = np.nonzero(ok)
-        for k in range(len(kept), BROW_MIN if len(ox) else 0):         # by rule, from the brow
+        for k in range(len(kept), BROW_MIN if len(ox) else 0):  # by rule, from the brow
             want = np.array([ex + out * (0.05 + 0.1 * k) * d, oy.min() + 0.6 * (oy.max() - oy.min())])
             j = int(np.argmin((ox + 0.5 - want[0]) ** 2 + (oy + 0.5 - want[1]) ** 2))
             lo = np.array([ox[j] + 0.5, oy[j] + 0.5])
@@ -439,8 +585,13 @@ def catchlights(cat: dict) -> tuple[np.ndarray, np.ndarray]:
             if m.sum() >= 2 and 2 * math.sqrt(m.sum() / math.pi) <= CATCH_SIZE * width:
                 ys, xs = np.nonzero(m)
                 w = lum[m]
-                blobs.append((float(w.max()), np.array([np.average(xs, weights=w), np.average(ys, weights=w)]) + 0.5,
-                              float(np.clip(2 * math.sqrt(m.sum() / math.pi), 2.5, 9.0))))
+                blobs.append(
+                    (
+                        float(w.max()),
+                        np.array([np.average(xs, weights=w), np.average(ys, weights=w)]) + 0.5,
+                        float(np.clip(2 * math.sqrt(m.sum() / math.pi), 2.5, 9.0)),
+                    )
+                )
         for _, c, dd in sorted(blobs, key=lambda b: -b[0])[:CATCH_MAX]:
             xy.append(c)
             dia.append(dd)
@@ -475,9 +626,11 @@ def tip_of(root: np.ndarray, tip: np.ndarray, path: np.ndarray, over: np.ndarray
     at least TRACE_HALF as much lighter than about it (`over`: lightness over its 3 px blur, the lightest of 3 lines
     1 px apart across) as the traced hair is at its median, inside the ear: the trace stops where the hair is no
     longer a clear ridge, but a hair fades out towards its tip."""
+
     def light(q: np.ndarray, across: np.ndarray) -> float:
         at = np.clip((q + np.outer((-1, 0, 1), across)).astype(int), 0, SIDE - 1)
         return float(over[at[:, 1], at[:, 0]].max()) if inner[at[1, 1], at[1, 0]] else -np.inf
+
     ix = np.clip(path.astype(int), 0, SIDE - 1)
     keep = TRACE_HALF * np.median(over[ix[:, 1], ix[:, 0]])
     u = (tip - root) / (np.linalg.norm(tip - root) + 1e-9)
@@ -524,7 +677,7 @@ def ear_traced(cat: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         b_in, tip, b_out = (5, 4, 3) if a[0] + b[0] < 2 * mid else (6, 7, 8)
         base = 0.5 * (p[b_in] + p[b_out])
         up = p[tip] - base
-        if (a - base) @ up > (b - base) @ up:                      # root at the end nearer the base
+        if (a - base) @ up > (b - base) @ up:  # root at the end nearer the base
             a, b = b, a
         b = tip_of(a, b, path, over, inner)
         length = float(np.linalg.norm(b - a))
@@ -551,14 +704,16 @@ def ear_edges(cat: dict, inset: float, step: float, inner_only: bool) -> tuple[n
     ix, iy = np.clip(pts.astype(int), 0, SIDE - 1).T
     on_ear = ndimage.binary_dilation(cat["ears"], iterations=4)[iy, ix] & (pts[:, 1] < p[:2, 1].min())
     keep, out_xy = np.zeros(len(pts), bool), pts.copy()
-    for (b_in, tip, b_out) in ((5, 4, 3), (6, 7, 8)):
+    for b_in, tip, b_out in ((5, 4, 3), (6, 7, 8)):
         mid = p[[b_in, tip, b_out]].mean(0)
         near = on_ear & (np.linalg.norm(pts - mid, axis=1) < 1.2 * np.linalg.norm(p[tip] - mid))
         if inner_only:
+
             def dist(a, b):
                 ab = b - a
                 f = np.clip(((pts - a) @ ab) / (ab @ ab), 0, 1)
                 return np.linalg.norm(pts - (a + f[:, None] * ab), axis=1)
+
             near &= dist(p[b_in], p[tip]) < dist(p[b_out], p[tip])
         to_mid = mid - pts[near]
         out_xy[near] = pts[near] + inset * to_mid / (np.linalg.norm(to_mid, axis=1, keepdims=True) + 1e-9)
@@ -571,7 +726,7 @@ def fixed_places(st: Stage, cat: dict) -> tuple[np.ndarray, np.ndarray | None, n
     if st.place == "dots":
         xy, radius = muzzle_dots(cat)
         return xy, None, np.c_[2 * radius, 2 * radius]
-    if st.place == "pupil_plan":                         # one stroke a pupil: the plan's ellipse
+    if st.place == "pupil_plan":  # one stroke a pupil: the plan's ellipse
         p = np.array(cat["pupils"]).reshape(-1, 5)
         return p[:, :2], p[:, 4], np.c_[2 * p[:, 2], 2 * p[:, 3]]
     if st.place == "lid":
@@ -581,8 +736,11 @@ def fixed_places(st: Stage, cat: dict) -> tuple[np.ndarray, np.ndarray | None, n
         xy, ang = lid_places(cat, SHADOW_IN, SHADOW_STEP)
         return xy, ang, None
     if st.place in ("ear_back", "ear_fill", "ear_rim"):
-        inset, step = {"ear_back": (EAR_BACK_IN, 5.0), "ear_fill": (EAR_FILL_IN, 4.0),
-                       "ear_rim": (EAR_RIM_IN, LID_STEP)}[st.place]
+        inset, step = {
+            "ear_back": (EAR_BACK_IN, 5.0),
+            "ear_fill": (EAR_FILL_IN, 4.0),
+            "ear_rim": (EAR_RIM_IN, LID_STEP),
+        }[st.place]
         xy, ang = ear_edges(cat, inset, step, st.place == "ear_back")
         return xy, ang, None
     if st.place == "ear_traced":
@@ -616,24 +774,29 @@ def photo_colours(st: Stage, cat: dict, xy: np.ndarray, sizes: np.ndarray | None
                 pick = lum >= np.quantile(lum[near], 0.7)
             cols.append(img[near & pick].mean(0))
             continue
-        near = ((xx - x) ** 2 + (yy - y) ** 2 < WHISKER_NEAR ** 2) & (light > 0)
+        near = ((xx - x) ** 2 + (yy - y) ** 2 < WHISKER_NEAR**2) & (light > 0)
         if near.sum() < 3:
-            near = (xx - x) ** 2 + (yy - y) ** 2 < WHISKER_NEAR ** 2
+            near = (xx - x) ** 2 + (yy - y) ** 2 < WHISKER_NEAR**2
         cols.append(img[near & (lum >= np.quantile(lum[near], st.light_top))].mean(0))
     return np.array(cols, np.float32)
 
 
 # ------------------------------------------------------------------ fitting one layer
-def fit_stage(st: Stage, cat: dict, canvas: torch.Tensor, rng: np.random.Generator,
-              device: torch.device | str = "cpu", iters: int | None = None
-              ) -> tuple[StrokeParams, torch.Tensor, Stage] | None:
+def fit_stage(
+    st: Stage,
+    cat: dict,
+    canvas: torch.Tensor,
+    rng: np.random.Generator,
+    device: torch.device | str = "cpu",
+    iters: int | None = None,
+) -> tuple[StrokeParams, torch.Tensor, Stage] | None:
     """Place one layer's strokes, fit them to the photo and lay them on the canvas. Returns the fitted strokes (on the
     CPU), the canvas after them and the layer with its real stroke count, or None when the layer has no places in
     this photo (no whisker dots, say). Fitting runs on `device`; the places are drawn from `rng`."""
     device = torch.device(device)
     target = goal_of(st, cat)
     base, sizes = None, None
-    if st.place in FIXED_PLACES:                           # places set by rule, plan or photo
+    if st.place in FIXED_PLACES:  # places set by rule, plan or photo
         xy_np, ang, sizes = fixed_places(st, cat)
         if not len(xy_np):
             return None
@@ -642,51 +805,63 @@ def fit_stage(st: Stage, cat: dict, canvas: torch.Tensor, rng: np.random.Generat
         px, py = np.clip(xy_np.astype(int), 0, SIDE - 1).T
         idx = py * SIDE + px
         xy = torch.tensor(xy_np, dtype=torch.float32)
-    else:                                                  # places drawn from the layer's place map
+    else:  # places drawn from the layer's place map
         p_map = place_map(st, cat, canvas, target).flatten() + 1e-9
         idx = rng.choice(p_map.size, st.n, replace=False, p=p_map / p_map.sum())
-        idx = idx[np.argsort(idx // SIDE, kind="stable")]                      # painted top to bottom
+        idx = idx[np.argsort(idx // SIDE, kind="stable")]  # painted top to bottom
         py, px = idx // SIDE, idx % SIDE
         xy = torch.tensor(np.c_[px, py] + 0.5, dtype=torch.float32)
-        if st.radial:                                      # rooted at the place, running away from the muzzle
+        if st.radial:  # rooted at the place, running away from the muzzle
             away = xy.numpy() - np.broadcast_to(cat["whisker_origin"], xy.shape)
             base = torch.tensor(np.arctan2(away[:, 1], away[:, 0]), dtype=torch.float32)
     small = F.interpolate(target.permute(2, 0, 1)[None], size=(256, 256), mode="area")[0].permute(1, 2, 0)
-    start_angle = orientation(small)                       # free strokes start along the photo's local structure
+    start_angle = orientation(small)  # free strokes start along the photo's local structure
     a0 = F.interpolate(start_angle[None, None], size=(SIDE, SIDE), mode="nearest")[0, 0].flatten()[torch.as_tensor(idx)]
     size = torch.zeros(st.n, 2)
-    if base is not None:                                   # strokes with a set direction vary in size by their hash
+    if base is not None:  # strokes with a set direction vary in size by their hash
         seed = seed_of(xy.numpy(), base.numpy(), SIDE)
         lo, hi = VARY
         vary = torch.stack([lo + (hi - lo) * hash01(seed, torch.full_like(seed, salt)) for salt in (23.0, 29.0)], -1)
         size = logit((vary - 0.5).clamp(0.02, 0.98))
-    if sizes is not None:                                  # each its own size (dots, pupils, catchlights, ear hairs)
+    if sizes is not None:  # each its own size (dots, pupils, catchlights, ear hairs)
         f = torch.tensor(sizes / np.array([st.length, st.width]), dtype=torch.float32)
         lo_s, hi_s = st.size_range
         size = logit(((f - lo_s) / (hi_s - lo_s)).clamp(0.02, 0.98))
     under = None
-    if st.tint is not None:                                # the ear's rim: the paint just inside it
+    if st.tint is not None:  # the ear's rim: the paint just inside it
         ear_mid = [cat["points"][[5, 4, 3]].mean(0), cat["points"][[6, 7, 8]].mean(0)]
         to_mid = np.array([ear_mid[0] if x < cat["centre"][0] else ear_mid[1] for x in xy.numpy()[:, 0]]) - xy.numpy()
         at = xy.numpy() + 4 * to_mid / (np.linalg.norm(to_mid, axis=1, keepdims=True) + 1e-9)
         soft = np.stack([ndimage.gaussian_filter(canvas[..., c].numpy(), TINT_BLUR) for c in range(3)], -1)
         ux, uy = np.clip(at, 0, SIDE - 1).astype(int).T
         under = torch.from_numpy(soft[uy, ux].astype(np.float32))
-    if st.photo_colour:                                    # coloured as the photo at the place
+    if st.photo_colour:  # coloured as the photo at the place
         under = photo_colours(st, cat, xy.numpy(), sizes)
-        if st.emphasis:                                    # stronger than the photo, as a painter would
+        if st.emphasis:  # stronger than the photo, as a painter would
             under = under * (1 - st.emphasis) if st.photo_colour == "dark" else under + st.emphasis * (1 - under)
         under = torch.from_numpy(under.astype(np.float32))
-    s = Strokes(xy=logit(xy / SIDE), size=size,
-                angle=a0.clone() if st.turn_deg is None else torch.zeros(st.n),
-                colour=(logit(target[torch.as_tensor(py), torch.as_tensor(px)].clamp(0.02, 0.98)) if under is None
-                        else torch.zeros(st.n, 3)),
-                alpha=torch.zeros(st.n), base=base, under=under)
+    s = Strokes(
+        xy=logit(xy / SIDE),
+        size=size,
+        angle=a0.clone() if st.turn_deg is None else torch.zeros(st.n),
+        colour=(
+            logit(target[torch.as_tensor(py), torch.as_tensor(px)].clamp(0.02, 0.98))
+            if under is None
+            else torch.zeros(st.n, 3)
+        ),
+        alpha=torch.zeros(st.n),
+        base=base,
+        under=under,
+    )
     s = Strokes(*(t.to(device) for t in s.tensors()), *(None if t is None else t.to(device) for t in (base, under)))
     target, cat = target.to(device), {**cat, "field": cat["field"].to(device)}
     weight, protect = fit_weights(st, cat, device)
-    fitted = ([s.size] if st.fit_size else []) + [s.angle, s.alpha] + ([] if st.photo_colour else [s.colour]) + \
-        ([] if st.fixed_place else [s.xy])
+    fitted = (
+        ([s.size] if st.fit_size else [])
+        + [s.angle, s.alpha]
+        + ([] if st.photo_colour else [s.colour])
+        + ([] if st.fixed_place else [s.xy])
+    )
     for t in fitted:
         t.requires_grad_(True)
     opt = torch.optim.Adam(fitted, lr=LR)
@@ -723,7 +898,7 @@ def fit_weights(st: Stage, cat: dict, device: torch.device) -> tuple[torch.Tenso
 
 
 # ------------------------------------------------------------------ the seven stages, eyes apart
-Layer = tuple[int, int, StrokeParams, Stage]      # (stage, layer index j, strokes, layer)
+Layer = tuple[int, int, StrokeParams, Stage]  # (stage, layer index j, strokes, layer)
 
 
 @dataclass
@@ -737,8 +912,9 @@ class StageResult:
     seconds: float
 
 
-def paint_eyes_apart(cat: dict, canvas: torch.Tensor, layers: list[Layer], device: torch.device | str = "cpu"
-                     ) -> torch.Tensor:
+def paint_eyes_apart(
+    cat: dict, canvas: torch.Tensor, layers: list[Layer], device: torch.device | str = "cpu"
+) -> torch.Tensor:
     """Stage 2: the left eye's layers, then the right's, each eye with its own random places and its share of the
     strokes by its area (fitted strokes appended to `layers`)."""
     eyes = [one_eye(cat, side) for side in (0, 1)]
@@ -754,8 +930,14 @@ def paint_eyes_apart(cat: dict, canvas: torch.Tensor, layers: list[Layer], devic
     return canvas
 
 
-def paint_without_eyes(stage: int, seen: dict, canvas: torch.Tensor, plain: torch.Tensor, layers: list[Layer],
-                       device: torch.device | str = "cpu") -> tuple[torch.Tensor, torch.Tensor]:
+def paint_without_eyes(
+    stage: int,
+    seen: dict,
+    canvas: torch.Tensor,
+    plain: torch.Tensor,
+    layers: list[Layer],
+    device: torch.device | str = "cpu",
+) -> tuple[torch.Tensor, torch.Tensor]:
     """A stage other than the eyes: fitted to `seen` on the canvas without eyes (`plain`), laid on both canvases."""
     rng = np.random.default_rng(stage)
     for j, st in enumerate(STAGES[stage]):
@@ -768,8 +950,12 @@ def paint_without_eyes(stage: int, seen: dict, canvas: torch.Tensor, plain: torc
     return canvas, plain
 
 
-def paint_apart(cat: dict, inputs: CatInputs, device: torch.device | str = "cpu",
-                on_stage: Callable[[StageResult], None] | None = None) -> tuple[torch.Tensor, list[StageResult]]:
+def paint_apart(
+    cat: dict,
+    inputs: CatInputs,
+    device: torch.device | str = "cpu",
+    on_stage: Callable[[StageResult], None] | None = None,
+) -> tuple[torch.Tensor, list[StageResult]]:
     """All seven stages with the eyes apart: every stage but the eyes is fitted to without_eyes(cat) on a canvas
     that never had eyes (and laid on the real canvas too); the eyes are painted one at a time. on_stage is called
     with each stage as it finishes. (the final canvas, the stages)"""
@@ -789,8 +975,9 @@ def paint_apart(cat: dict, inputs: CatInputs, device: torch.device | str = "cpu"
     return canvas, results
 
 
-def paint_eye_versions(versions: list[dict], inputs: CatInputs, device: torch.device | str = "cpu"
-                       ) -> list[tuple[torch.Tensor, list[Layer]]]:
+def paint_eye_versions(
+    versions: list[dict], inputs: CatInputs, device: torch.device | str = "cpu"
+) -> list[tuple[torch.Tensor, list[Layer]]]:
     """paint_apart for several versions of one cat that differ only inside the eyes (e.g. recoloured eyes): the
     stages other than the eyes read nothing inside the eyes, so they are fitted once and every version gets only its
     own eyes, laid layer by layer as paint_apart lays them, so each version's result equals paint_apart's.
@@ -892,10 +1079,15 @@ def save_stage(folder: Path, result: StageResult, cat: dict, device: str) -> dic
     for stage 2, how far replaying it one eye at a time lands from the fitted canvas). Returns the row."""
     arrays = stage_arrays(result, cat["points"])
     np.savez_compressed(folder / f"stage{result.stage}.npz", **arrays)
-    row = {"stage": result.stage, "layers": [s.name for s in STAGES[result.stage]],
-           "strokes": sum(len(p.xy) for _, _, p, _ in result.layers), "seconds": result.seconds, "device": device,
-           "l1_cat_before": round(l1_on_cat(result.before, cat), 4),
-           "l1_cat_after": round(l1_on_cat(result.canvas, cat), 4)}
+    row = {
+        "stage": result.stage,
+        "layers": [s.name for s in STAGES[result.stage]],
+        "strokes": sum(len(p.xy) for _, _, p, _ in result.layers),
+        "seconds": result.seconds,
+        "device": device,
+        "l1_cat_before": round(l1_on_cat(result.before, cat), 4),
+        "l1_cat_after": round(l1_on_cat(result.canvas, cat), 4),
+    }
     if result.stage == EYE_STAGE:
         end = replay(stage_layers(arrays, EYE_STAGE), result.before)
         row["eye_order_max_diff"] = float((end - result.canvas).abs().max())
@@ -904,8 +1096,12 @@ def save_stage(folder: Path, result: StageResult, cat: dict, device: str) -> dic
     return row
 
 
-def paint_cat(inputs: CatInputs, folder: Path | str, device: torch.device | str = "cpu",
-              on_row: Callable[[dict], None] | None = None) -> torch.Tensor:
+def paint_cat(
+    inputs: CatInputs,
+    folder: Path | str,
+    device: torch.device | str = "cpu",
+    on_row: Callable[[dict], None] | None = None,
+) -> torch.Tensor:
     """Paint one cat's seven stages with the eyes apart into `folder` (stage1.npz .. stage7.npz, log.jsonl).
     Returns the finished canvas."""
     folder = Path(folder)

@@ -21,15 +21,15 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-FIELD_SIDE = 256                       # the grid the field is computed on (the face points' grid)
+FIELD_SIDE = 256  # the grid the field is computed on (the face points' grid)
 TEXTURE_EYE, TEXTURE_NOSE = 0.45, 0.30  # eye distances around the eyes and the nose where the photo shows texture
-BEND = 0.8                             # how strongly the photo's grain bends the template
+BEND = 0.8  # how strongly the photo's grain bends the template
 
 
 def gauss(img: torch.Tensor, sigma: float) -> torch.Tensor:
     """Separable Gaussian blur of an (H, W) or (H, W, C) image, edges reflected."""
     r = max(1, int(3 * sigma))
-    k = torch.exp(-torch.arange(-r, r + 1, dtype=torch.float32) ** 2 / (2 * sigma ** 2))
+    k = torch.exp(-(torch.arange(-r, r + 1, dtype=torch.float32) ** 2) / (2 * sigma**2))
     k = k / k.sum()
     x = img[None, None] if img.dim() == 2 else img.permute(2, 0, 1)[:, None]
     x = F.conv2d(F.pad(x, (r, r, 0, 0), mode="reflect"), k.view(1, 1, 1, -1))
@@ -48,7 +48,7 @@ def texture(img: torch.Tensor, window: float = 1.5) -> tuple[torch.Tensor, torch
     gx, gy = _sobel(img @ torch.tensor([0.299, 0.587, 0.114]))
     jxx, jyy, jxy = (gauss(t, window) for t in (gx * gx, gy * gy, gx * gy))
     theta = 0.5 * torch.atan2(2 * jxy, jxx - jyy) + math.pi / 2
-    coh = torch.sqrt((jxx - jyy) ** 2 + 4 * jxy ** 2) / (jxx + jyy + 1e-6)
+    coh = torch.sqrt((jxx - jyy) ** 2 + 4 * jxy**2) / (jxx + jyy + 1e-6)
     return theta, coh
 
 
@@ -75,7 +75,7 @@ def pixel_grid(side: int = FIELD_SIDE) -> torch.Tensor:
 def soft_triangle(grid: torch.Tensor, a: torch.Tensor, b: torch.Tensor, c: torch.Tensor, soft: float) -> torch.Tensor:
     """1 inside the triangle abc, 0 outside, with an edge `soft` px wide."""
     centroid = (a + b + c) / 3
-    a, b, c = (centroid + (v - centroid) for v in (a, b, c))   # recentred on the centroid (differs only by rounding)
+    a, b, c = (centroid + (v - centroid) for v in (a, b, c))  # recentred on the centroid (differs only by rounding)
     dist = []
     for p, q, other in ((a, b, c), (b, c, a), (c, a, b)):
         e = q - p
@@ -102,7 +102,7 @@ def anatomy_template(points: np.ndarray, grid: torch.Tensor) -> torch.Tensor:
     v = v - (0.45 * below * lateral)[..., None] * up
     radial = doubled(torch.atan2(v[..., 1], v[..., 0]))
     eye_dir = doubled(torch.atan2(right[1], right[0])).expand_as(radial)
-    w_eye = sum(torch.exp(-(torch.linalg.norm(grid - e, dim=-1) / (0.45 * d)) ** 2) for e in (p[0], p[1]))
+    w_eye = sum(torch.exp(-((torch.linalg.norm(grid - e, dim=-1) / (0.45 * d)) ** 2)) for e in (p[0], p[1]))
     parts, weights = [radial, eye_dir], [torch.ones_like(w_eye), 2.0 * w_eye]
     for outer, tip, inner in ((p[3], p[4], p[5]), (p[8], p[7], p[6])):
         out = grid - (outer + inner) / 2

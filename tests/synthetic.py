@@ -9,8 +9,9 @@ from PIL import Image
 
 from brushgpt.cat import CatInputs
 
-POINTS = np.array([[95, 120], [161, 120], [128, 182], [50, 95], [62, 28], [100, 72],
-                   [156, 72], [194, 28], [206, 95]], np.float32)
+POINTS = np.array(
+    [[95, 120], [161, 120], [128, 182], [50, 95], [62, 28], [100, 72], [156, 72], [194, 28], [206, 95]], np.float32
+)
 EYE_RADII = (17.0, 11.0)
 
 
@@ -40,7 +41,12 @@ def synthetic_inputs(eye_colour: tuple[float, float, float] = (0.35, 0.6, 0.25))
     img[inside(nose)] = (0.85, 0.55, 0.55)
     target = (np.clip(img, 0, 1) * 255).round().astype(np.uint8)
     tri = head.astype(np.uint8)
-    plan = {"eyes": np.stack(eyes), "pupils": np.array([[95, 120, 3, 8, 0, 0], [161, 120, 3, 8, 0, 0]], float),
-            "nose": nose, "mouth": np.array([[112, 186], [120, 190], [128, 186], [136, 190], [144, 186]], float)}
-    return CatInputs(target=target, tri=tri, points=POINTS.copy(), box=(0, 0, side, side),
-                     photo=Image.fromarray(target), plan=plan)
+    plan = {
+        "eyes": np.stack(eyes),
+        "pupils": np.array([[95, 120, 3, 8, 0, 0], [161, 120, 3, 8, 0, 0]], float),
+        "nose": nose,
+        "mouth": np.array([[112, 186], [120, 190], [128, 186], [136, 190], [144, 186]], float),
+    }
+    return CatInputs(
+        target=target, tri=tri, points=POINTS.copy(), box=(0, 0, side, side), photo=Image.fromarray(target), plan=plan
+    )

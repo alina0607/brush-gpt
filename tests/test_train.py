@@ -12,9 +12,28 @@ import torch
 from brushgpt.model import BrushGPTConfig, convert_reference_state_dict, drop_attributes, load_checkpoint
 from brushgpt.train import PaintingData, TrainConfig, layout_from_specials, lr_at, sample_held, train
 
-SPECIALS = ["BOS", "EOS", "SEP", "EYE_L", "EYE_R", *(f"LAYER{k}" for k in range(8)), "COND_unclear", "COND_blue",
-            "COND_green", "COND_yellow", "COND_BASE_white", "COND_BASE_black", "COND_PAT_solid", "COND_PAT_tabby",
-            "TASK_GEN", "TASK_EYES", "PLAN_HEAD", "PLAN_EYE", "PLAN_END", "PAL_ALL"]
+SPECIALS = [
+    "BOS",
+    "EOS",
+    "SEP",
+    "EYE_L",
+    "EYE_R",
+    *(f"LAYER{k}" for k in range(8)),
+    "COND_unclear",
+    "COND_blue",
+    "COND_green",
+    "COND_yellow",
+    "COND_BASE_white",
+    "COND_BASE_black",
+    "COND_PAT_solid",
+    "COND_PAT_tabby",
+    "TASK_GEN",
+    "TASK_EYES",
+    "PLAN_HEAD",
+    "PLAN_EYE",
+    "PLAN_END",
+    "PAL_ALL",
+]
 FIELD_NAMES = ["x", "y", "angle", "size", "paint", "colour"]
 FIELD_SIZES = [16, 16, 4, 3, 10, 6]
 
@@ -41,7 +60,7 @@ def make_data(path: Path, n_cats: int = 6, seed: int = 0) -> Path:
 
     rows, fields, conds, cat_id, versions = [], [], [], [], []
     for c in range(n_cats):
-        for version in ["A", "A~m", "eye:both_green"][:2 + c % 2]:
+        for version in ["A", "A~m", "eye:both_green"][: 2 + c % 2]:
             t, f = [sp["PLAN_HEAD"]], [0]
             for _ in range(rng.integers(2, 5)):
                 t += [tok(0), tok(1)]
@@ -64,13 +83,24 @@ def make_data(path: Path, n_cats: int = 6, seed: int = 0) -> Path:
     tokens = np.full((len(rows), width), -1, np.int32)
     flds = np.full((len(rows), width), -1, np.int8)
     for i, (t, f) in enumerate(zip(rows, fields, strict=True)):
-        tokens[i, :len(t)], flds[i, :len(f)] = t, f
-    np.savez(path, tokens=tokens, fields=flds, cond=np.array(conds, np.int32), cat_id=np.array(cat_id),
-             group=np.array(cat_id), kind=np.array(["gen"] * len(rows)), versions=np.array(versions),
-             cats=np.array([f"cat{c}" for c in range(n_cats)]),
-             split=np.array(["train"] * (n_cats - 2) + ["held"] * 2), specials=np.array(SPECIALS),
-             vocab=np.array(len(SPECIALS) + sum(FIELD_SIZES)), field_names=np.array(FIELD_NAMES),
-             field_sizes=np.array(FIELD_SIZES), palette_k=np.array([3, 0]))
+        tokens[i, : len(t)], flds[i, : len(f)] = t, f
+    np.savez(
+        path,
+        tokens=tokens,
+        fields=flds,
+        cond=np.array(conds, np.int32),
+        cat_id=np.array(cat_id),
+        group=np.array(cat_id),
+        kind=np.array(["gen"] * len(rows)),
+        versions=np.array(versions),
+        cats=np.array([f"cat{c}" for c in range(n_cats)]),
+        split=np.array(["train"] * (n_cats - 2) + ["held"] * 2),
+        specials=np.array(SPECIALS),
+        vocab=np.array(len(SPECIALS) + sum(FIELD_SIZES)),
+        field_names=np.array(FIELD_NAMES),
+        field_sizes=np.array(FIELD_SIZES),
+        palette_k=np.array([3, 0]),
+    )
     return path
 
 
@@ -121,16 +151,16 @@ def test_eye_paint_marks_paint_tokens_of_eye_layers_only(data_file: Path):
 
 def test_training_writes_checkpoints_and_sampling_gives_one_painting_per_cat(data_file: Path, tmp_path: Path):
     data = PaintingData(data_file)
-    model_cfg = BrushGPTConfig(vocab_size=data.vocab + 1, d_model=32, n_heads=4, enc_layers=1, dec_layers=1,
-                               max_len=512, null_token=True)
+    model_cfg = BrushGPTConfig(
+        vocab_size=data.vocab + 1, d_model=32, n_heads=4, enc_layers=1, dec_layers=1, max_len=512, null_token=True
+    )
     out = tmp_path / "run"
     model = train(data, model_cfg, TrainConfig(steps=3, accum=2, warmup=1, eval_every=2, cond_drop=0.5), out)
     assert {"info.json", "log.jsonl", "last.pt", "best.pt"} <= {p.name for p in out.iterdir()}
     rows = [json.loads(line) for line in (out / "log.jsonl").read_text().splitlines()]
     assert [r["step"] for r in rows] == [2, 3] and all("gen_nll" in r for r in rows)
     again = load_checkpoint(torch.load(out / "last.pt"), data.layout)
-    assert all(torch.equal(a, b) for a, b in zip(model.state_dict().values(), again.state_dict().values(),
-                                                  strict=True))
+    assert all(torch.equal(a, b) for a, b in zip(model.state_dict().values(), again.state_dict().values(), strict=True))
     tokens, items = sample_held(again, data, n_cats=2, batch=2, guidance=2.0)
     assert tokens.shape[0] == 2 and list(items) == data.held[:2]
 
@@ -154,9 +184,29 @@ def test_data_matches_the_reference(data_file: Path):
 
 
 def _reference_args(data: Path, out: Path, **kw) -> argparse.Namespace:
-    args = dict(arch="encdec", layout="free", data=str(data), out=str(out), steps=6, accum=3, lr=3e-4, d_model=32,
-                n_layers=8, enc_layers=1, dec_layers=2, eval_every=3, eval_pairs=60, stop_after_min=0, gen_frac=1.0,
-                init=None, eval_gen=3, dropout=0.1, weight_decay=0.1, cond_drop=0.3, balance_cats=True)
+    args = dict(
+        arch="encdec",
+        layout="free",
+        data=str(data),
+        out=str(out),
+        steps=6,
+        accum=3,
+        lr=3e-4,
+        d_model=32,
+        n_layers=8,
+        enc_layers=1,
+        dec_layers=2,
+        eval_every=3,
+        eval_pairs=60,
+        stop_after_min=0,
+        gen_frac=1.0,
+        init=None,
+        eval_gen=3,
+        dropout=0.1,
+        weight_decay=0.1,
+        cond_drop=0.3,
+        balance_cats=True,
+    )
     return argparse.Namespace(**{**args, **kw})
 
 
@@ -168,10 +218,15 @@ def test_training_and_sampling_match_the_reference(tmp_path: Path, balance_cats:
     a = _reference_args(data_file, ref_out, balance_cats=balance_cats)
     ea.train(a)
     data = PaintingData(data_file)
-    model_cfg = BrushGPTConfig(vocab_size=data.vocab + 1, d_model=32, enc_layers=1, dec_layers=2, dropout=0.1,
-                               null_token=True)
-    train(data, model_cfg, TrainConfig(steps=6, accum=3, eval_every=3, eval_paintings=3, cond_drop=0.3,
-                                       balance_cats=balance_cats), my_out)
+    model_cfg = BrushGPTConfig(
+        vocab_size=data.vocab + 1, d_model=32, enc_layers=1, dec_layers=2, dropout=0.1, null_token=True
+    )
+    train(
+        data,
+        model_cfg,
+        TrainConfig(steps=6, accum=3, eval_every=3, eval_paintings=3, cond_drop=0.3, balance_cats=balance_cats),
+        my_out,
+    )
 
     def logged(out: Path) -> list[dict]:
         keys = ("step", "loss", "lr", "gen_acc", "gen_nll", "gen_tokens", "eye_paint_nll", "eye_swap_gap")
@@ -183,8 +238,17 @@ def test_training_and_sampling_match_the_reference(tmp_path: Path, balance_cats:
     assert all(torch.equal(ref_state[k], v) for k, v in my_ck["model"].items())
 
     for guidance in (1.0, 2.0):
-        s = argparse.Namespace(ckpt=str(ref_out / "best.pt"), data=str(data_file), out=str(tmp_path / "ref.npz"),
-                               cats=2, temperature=1.0, seed=0, task="gen", batch=2, guidance=guidance)
+        s = argparse.Namespace(
+            ckpt=str(ref_out / "best.pt"),
+            data=str(data_file),
+            out=str(tmp_path / "ref.npz"),
+            cats=2,
+            temperature=1.0,
+            seed=0,
+            task="gen",
+            batch=2,
+            guidance=guidance,
+        )
         ea.sample_cmd(s)
         ref_tokens = np.load(tmp_path / "ref.npz")["tokens"]
         model = load_checkpoint(torch.load(my_out / "best.pt"), data.layout)
@@ -199,8 +263,12 @@ def test_real_data_file_reads_as_the_reference_reads_it():
         pytest.skip("the real data file is not there")
     ref, mine = ea.Pairs(path, "cpu"), PaintingData(path)
     lay = mine.layout
-    assert (list(lay.slots), list(lay.field_offsets), list(lay.field_sizes), list(lay.plan_markers)) == \
-        (ref.slots, ref.offsets, ref.sizes, ref.plan_runs)
+    assert (list(lay.slots), list(lay.field_offsets), list(lay.field_sizes), list(lay.plan_markers)) == (
+        ref.slots,
+        ref.offsets,
+        ref.sizes,
+        ref.plan_runs,
+    )
     assert dict(lay.palette) == ref.palette_runs
     assert mine.train == ref.gens["train"] and mine.held == ref.gens["held"]
     for i in (mine.train[0], mine.train[-1], mine.held[0]):

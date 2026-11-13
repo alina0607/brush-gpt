@@ -31,10 +31,10 @@ from .eye_data import OUTLINE_POINTS, PUPIL_POINTS
 from .layers import GPT, GPTConfig
 
 VAL_EVERY = 25
-OUTLINE_AT = slice(6, 6 + 2 * OUTLINE_POINTS)            # the outline's (x, y) tokens in a prefix
-PUPIL_MARK = 6 + 2 * OUTLINE_POINTS                      # PUPIL or NO_PUPIL
+OUTLINE_AT = slice(6, 6 + 2 * OUTLINE_POINTS)  # the outline's (x, y) tokens in a prefix
+PUPIL_MARK = 6 + 2 * OUTLINE_POINTS  # PUPIL or NO_PUPIL
 PUPIL_AT = slice(PUPIL_MARK + 1, PUPIL_MARK + 1 + 2 * PUPIL_POINTS)
-COLOUR_AT = 2                                            # the asked eye colour's position in a prefix
+COLOUR_AT = 2  # the asked eye colour's position in a prefix
 
 
 def resolve_device(name: str = "auto") -> torch.device:
@@ -73,11 +73,12 @@ class EyeData:
         val_cat = np.array([zlib.crc32(c.encode()) % VAL_EVERY == 0 for c in self.cats])[self.cat_id]
         self.train = np.flatnonzero((split == "train") & ~val_cat)
         self.val = np.flatnonzero((split == "train") & val_cat & (self.version == "A"))
-        self.held = np.flatnonzero((split == "held") & (self.version == "A"))   # as painted: no versions, no mirrors
+        self.held = np.flatnonzero((split == "held") & (self.version == "A"))  # as painted: no versions, no mirrors
         self.by_cat = {int(c): self.train[self.cat_id[self.train] == c] for c in np.unique(self.cat_id[self.train])}
 
-    def batch(self, ix: np.ndarray, device: torch.device, cond_drop: float = 0.0,
-              gen: np.random.Generator | None = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def batch(
+        self, ix: np.ndarray, device: torch.device, cond_drop: float = 0.0, gen: np.random.Generator | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """(inputs, targets, loss mask) of these eyes, padded to the longest; the mask counts the body only. With
         cond_drop, that share of the eyes have their colour replaced by NULL."""
         n = int(self.lengths[ix].max())
@@ -98,7 +99,7 @@ class EyeData:
 
     def prefixes(self, rows: np.ndarray, eye_as: str = "") -> torch.Tensor:
         """These eyes' prefixes; eye_as: every eye asked in that colour instead (the swap test)."""
-        pre = torch.from_numpy(self.tokens[rows, :self.prefix].copy())
+        pre = torch.from_numpy(self.tokens[rows, : self.prefix].copy())
         if eye_as:
             pre[:, COLOUR_AT] = self.sp[f"EYE_{eye_as}"]
         return pre
@@ -111,11 +112,19 @@ def without_colour(prefix: torch.Tensor, null_id: int) -> torch.Tensor:
     return out
 
 
-def model_config(data: EyeData, d_model: int = 384, n_layers: int = 8, n_heads: int = 6,
-                 dropout: float = 0.1) -> GPTConfig:
+def model_config(
+    data: EyeData, d_model: int = 384, n_layers: int = 8, n_heads: int = 6, dropout: float = 0.1
+) -> GPTConfig:
     """The GPT for this data: half as many key/value heads as query heads, positions for the longest eye."""
-    return GPTConfig(vocab_size=data.vocab, d_model=d_model, n_layers=n_layers, n_heads=n_heads,
-                     n_kv_heads=max(1, n_heads // 2), max_seq_len=int(data.lengths.max()) + 8, dropout=dropout)
+    return GPTConfig(
+        vocab_size=data.vocab,
+        d_model=d_model,
+        n_layers=n_layers,
+        n_heads=n_heads,
+        n_kv_heads=max(1, n_heads // 2),
+        max_seq_len=int(data.lengths.max()) + 8,
+        dropout=dropout,
+    )
 
 
 # ------------------------------------------------------------------ training
@@ -129,9 +138,9 @@ class EyeTrainConfig:
     cond_drop: float = 0.15
     balance_cats: bool = False
     eval_every: int = 500
-    eval_limit: int = 0          # score only the first N validation and held eyes (a quick check)
+    eval_limit: int = 0  # score only the first N validation and held eyes (a quick check)
     log_every: int = 50
-    sample_every: int = 2000     # also sample validation eyes and check their geometry (0: never)
+    sample_every: int = 2000  # also sample validation eyes and check their geometry (0: never)
     sample_n: int = 16
     stop_after_min: float = 0.0
     seed: int = 0
@@ -145,14 +154,15 @@ def lr_at(step: int, steps: int, lr: float, warmup: int) -> float:
 
 
 @torch.no_grad()
-def mean_body_loss(model: GPT, data: EyeData, rows: np.ndarray, device: torch.device, batch: int,
-                   limit: int = 0) -> float:
+def mean_body_loss(
+    model: GPT, data: EyeData, rows: np.ndarray, device: torch.device, batch: int, limit: int = 0
+) -> float:
     """Mean loss per body token over these eyes (only the first `limit` with a limit)."""
     model.eval()
     rows = rows[:limit] if limit else rows
     total = count = 0.0
     for k in range(0, len(rows), batch):
-        x, y, m = data.batch(rows[k:k + batch], device)
+        x, y, m = data.batch(rows[k : k + batch], device)
         logits, _ = model(x)
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)).float(), y.reshape(-1), reduction="none")
         total += float((loss * m.reshape(-1)).sum())
@@ -162,8 +172,9 @@ def mean_body_loss(model: GPT, data: EyeData, rows: np.ndarray, device: torch.de
 
 
 def save_checkpoint(path: Path, model: GPT, step: int, val: float, held: float) -> None:
-    torch.save({"model": model.state_dict(), "config": model.cfg.to_dict(), "step": step, "val": val, "held": held},
-               path)
+    torch.save(
+        {"model": model.state_dict(), "config": model.cfg.to_dict(), "step": step, "val": val, "held": held}, path
+    )
 
 
 def load_checkpoint(path: str | Path, device: torch.device | str = "cpu", min_seq_len: int = 0) -> GPT:
@@ -176,8 +187,9 @@ def load_checkpoint(path: str | Path, device: torch.device | str = "cpu", min_se
     return model.eval()
 
 
-def train(data: EyeData, model_cfg: GPTConfig, cfg: EyeTrainConfig, out: str | Path,
-          device: torch.device | str = "cpu") -> GPT:
+def train(
+    data: EyeData, model_cfg: GPTConfig, cfg: EyeTrainConfig, out: str | Path, device: torch.device | str = "cpu"
+) -> GPT:
     """Train from scratch with AdamW (no weight decay on norms), gradient clipping at 1 and float16 on CUDA. Writes
     info.json, log.jsonl (training loss every log_every steps; validation and held loss every eval_every steps) and
     best.pt (the lowest validation loss)."""
@@ -187,16 +199,26 @@ def train(data: EyeData, model_cfg: GPTConfig, cfg: EyeTrainConfig, out: str | P
     model = GPT(model_cfg).to(device)
     decay = [p for p in model.parameters() if p.dim() >= 2]
     rest = [p for p in model.parameters() if p.dim() < 2]
-    opt = torch.optim.AdamW([{"params": decay, "weight_decay": cfg.weight_decay},
-                             {"params": rest, "weight_decay": 0.0}], lr=cfg.lr, betas=(0.9, 0.95))
+    opt = torch.optim.AdamW(
+        [{"params": decay, "weight_decay": cfg.weight_decay}, {"params": rest, "weight_decay": 0.0}],
+        lr=cfg.lr,
+        betas=(0.9, 0.95),
+    )
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    info = {"train": asdict(cfg), "config": model_cfg.to_dict(), "params": model.num_params(),
-            "train_eyes": len(data.train), "val_eyes": len(data.val), "held_eyes": len(data.held),
-            "train_cats": len(data.by_cat), "device": str(device)}
+    info = {
+        "train": asdict(cfg),
+        "config": model_cfg.to_dict(),
+        "params": model.num_params(),
+        "train_eyes": len(data.train),
+        "val_eyes": len(data.val),
+        "held_eyes": len(data.held),
+        "train_cats": len(data.by_cat),
+        "device": str(device),
+    }
     (out / "info.json").write_text(json.dumps(info, indent=1))
     print(json.dumps(info), flush=True)
-    amp = device.type == "cuda"                    # float16 with loss scaling (a T4 has no fast bfloat16)
+    amp = device.type == "cuda"  # float16 with loss scaling (a T4 has no fast bfloat16)
     scaler = torch.amp.GradScaler("cuda", enabled=amp)
     best, t0, seen = float("inf"), time.time(), 0
     with open(out / "log.jsonl", "a") as log:
@@ -218,13 +240,24 @@ def train(data: EyeData, model_cfg: GPTConfig, cfg: EyeTrainConfig, out: str | P
             scaler.update()
             seen += int(m.sum())
             if step % cfg.log_every == 0:
-                log.write(json.dumps({"step": step, "loss": round(loss.item(), 5),
-                                      "lr": round(opt.param_groups[0]["lr"], 7)}) + "\n")
+                log.write(
+                    json.dumps({"step": step, "loss": round(loss.item(), 5), "lr": round(opt.param_groups[0]["lr"], 7)})
+                    + "\n"
+                )
     return model
 
 
-def _evaluate(model: GPT, data: EyeData, cfg: EyeTrainConfig, device: torch.device, out: Path, log: IO[str],
-              step: int, best: float, tokens_per_s: float) -> float:
+def _evaluate(
+    model: GPT,
+    data: EyeData,
+    cfg: EyeTrainConfig,
+    device: torch.device,
+    out: Path,
+    log: IO[str],
+    step: int,
+    best: float,
+    tokens_per_s: float,
+) -> float:
     """The validation and held losses now; best.pt when the validation loss is the lowest so far. Returns the
     lowest."""
     v = mean_body_loss(model, data, data.val, device, cfg.batch, cfg.eval_limit)
@@ -264,8 +297,18 @@ class EyeGrammar:
             if eos:
                 m[data.sp["EOS"]] = True
             return m
-        self.masks = torch.stack([mask("x"), mask("y"), mask("angle"), mask("size"), mask("paint"),
-                                  mask(layers=True), mask("x", layers=True, eos=True)])
+
+        self.masks = torch.stack(
+            [
+                mask("x"),
+                mask("y"),
+                mask("angle"),
+                mask("size"),
+                mask("paint"),
+                mask(layers=True),
+                mask("x", layers=True, eos=True),
+            ]
+        )
         self.eos = data.sp["EOS"]
         self.layer_of = torch.full((v,), -1, dtype=torch.long, device=device)
         self.layer_of[self.layer_ids] = torch.arange(len(self.layer_ids), device=device)
@@ -276,19 +319,32 @@ class EyeGrammar:
         lay = self.layer_of[None, :]
         return m & ~((lay >= 0) & (lay <= layer[:, None]))
 
-    def advance(self, state: torch.Tensor, layer: torch.Tensor, tok: torch.Tensor
-                ) -> tuple[torch.Tensor, torch.Tensor]:
+    def advance(self, state: torch.Tensor, layer: torch.Tensor, tok: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         is_layer = self.layer_of[tok] >= 0
         layer = torch.where(is_layer, self.layer_of[tok], layer)
-        nxt = torch.where(is_layer, torch.zeros_like(state),
-                          torch.where(state == 4, torch.full_like(state, self.AFTER_STROKE),
-                                      torch.where(state == self.AFTER_STROKE, torch.ones_like(state), state + 1)))
+        nxt = torch.where(
+            is_layer,
+            torch.zeros_like(state),
+            torch.where(
+                state == 4,
+                torch.full_like(state, self.AFTER_STROKE),
+                torch.where(state == self.AFTER_STROKE, torch.ones_like(state), state + 1),
+            ),
+        )
         return nxt, layer
 
 
 @torch.no_grad()
-def generate(model: GPT, prefix: torch.Tensor, null_prefix: torch.Tensor | None, grammar: EyeGrammar, max_new: int,
-             temperature: float, guidance: float, gen: torch.Generator) -> torch.Tensor:
+def generate(
+    model: GPT,
+    prefix: torch.Tensor,
+    null_prefix: torch.Tensor | None,
+    grammar: EyeGrammar,
+    max_new: int,
+    temperature: float,
+    guidance: float,
+    gen: torch.Generator,
+) -> torch.Tensor:
     """Sample a body for each prefix (B, PREFIX), with a key/value cache; null_prefix: the same prefixes with the
     colour NULL, for guidance (both halves run as one batch). Sampling runs in float32. Returns (B, steps); a
     sequence that has ended is padded with EOS."""
@@ -338,24 +394,48 @@ class EyeSamples:
     @classmethod
     def load(cls, path: str | Path) -> EyeSamples:
         z = np.load(path)
-        return cls(z["rows"], z["prefix"], z["bodies"], float(z["guidance"]), float(z["temperature"]),
-                   int(z["seed"]), str(z["eye_as"]) if "eye_as" in z.files else "")
+        return cls(
+            z["rows"],
+            z["prefix"],
+            z["bodies"],
+            float(z["guidance"]),
+            float(z["temperature"]),
+            int(z["seed"]),
+            str(z["eye_as"]) if "eye_as" in z.files else "",
+        )
 
 
-def sample_held(model: GPT, data: EyeData, n_cats: int = 32, guidance: float = 1.0, temperature: float = 1.0,
-                eye_as: str = "", max_new: int = 1200, batch: int = 32, seed: int = 0) -> EyeSamples:
+def sample_held(
+    model: GPT,
+    data: EyeData,
+    n_cats: int = 32,
+    guidance: float = 1.0,
+    temperature: float = 1.0,
+    eye_as: str = "",
+    max_new: int = 1200,
+    batch: int = 32,
+    seed: int = 0,
+) -> EyeSamples:
     """Paint the first n_cats held cats' eyes (0: every held eye), one sample per eye, `batch` eyes at a time from
     one random generator. eye_as: every eye asked in that colour (the swap test)."""
     device = model.embed.weight.device
-    rows = data.held[:2 * n_cats] if n_cats else data.held
+    rows = data.held[: 2 * n_cats] if n_cats else data.held
     pre = data.prefixes(rows, eye_as)
     null = without_colour(pre, data.sp["NULL"])
     grammar = EyeGrammar(data, device)
     gen = torch.Generator(device=device).manual_seed(seed)
     bodies: list[np.ndarray] = []
     for k in range(0, len(rows), batch):
-        got = generate(model, pre[k:k + batch].to(device), null[k:k + batch].to(device), grammar, max_new,
-                       temperature, guidance, gen)
+        got = generate(
+            model,
+            pre[k : k + batch].to(device),
+            null[k : k + batch].to(device),
+            grammar,
+            max_new,
+            temperature,
+            guidance,
+            gen,
+        )
         bodies += [r.cpu().numpy() for r in got]
     width = max(len(b) for b in bodies)
     padded = np.stack([np.pad(b, (0, width - len(b)), constant_values=data.sp["EOS"]) for b in bodies])
@@ -398,21 +478,37 @@ def geometry(prefix: np.ndarray, body: np.ndarray, truth: np.ndarray, data: EyeD
     n_true = len(stroke_bins(truth, data)[0])
     pup = xy[lay == 3]
     no_pupil = prefix[PUPIL_MARK] == data.sp["NO_PUPIL"]
-    return {"strokes_ratio": len(xy) / max(n_true, 1),
-            "inside": float(inside(xy, outline).mean()) if len(xy) else 0.0,
-            "pupil_in_pupil": float("nan") if no_pupil else float(len(pup) > 0 and inside(pup, pupil).any())}
+    return {
+        "strokes_ratio": len(xy) / max(n_true, 1),
+        "inside": float(inside(xy, outline).mean()) if len(xy) else 0.0,
+        "pupil_in_pupil": float("nan") if no_pupil else float(len(pup) > 0 and inside(pup, pupil).any()),
+    }
 
 
 @torch.no_grad()
-def geometry_check(model: GPT, data: EyeData, device: torch.device, n: int, guidance: float,
-                   seed: int) -> dict[str, float]:
+def geometry_check(
+    model: GPT, data: EyeData, device: torch.device, n: int, guidance: float, seed: int
+) -> dict[str, float]:
     """Sample n validation eyes (one each, temperature 1) and average `geometry` against the painter's."""
     rows = data.val[:n]
     pre = data.prefixes(rows).to(device)
-    out = generate(model, pre, without_colour(pre, data.sp["NULL"]), EyeGrammar(data, device),
-                   int(data.lengths.max()) - data.prefix + 8, 1.0, guidance,
-                   torch.Generator(device=device).manual_seed(seed)).cpu().numpy()
+    out = (
+        generate(
+            model,
+            pre,
+            without_colour(pre, data.sp["NULL"]),
+            EyeGrammar(data, device),
+            int(data.lengths.max()) - data.prefix + 8,
+            1.0,
+            guidance,
+            torch.Generator(device=device).manual_seed(seed),
+        )
+        .cpu()
+        .numpy()
+    )
     model.train()
-    g = [geometry(data.tokens[r, :data.prefix], out[k], data.tokens[r, data.prefix:data.lengths[r]], data)
-         for k, r in enumerate(rows)]
+    g = [
+        geometry(data.tokens[r, : data.prefix], out[k], data.tokens[r, data.prefix : data.lengths[r]], data)
+        for k, r in enumerate(rows)
+    ]
     return {f"sample_{k}": round(float(np.nanmean([x[k] for x in g])), 3) for k in g[0]}

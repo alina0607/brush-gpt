@@ -44,7 +44,7 @@ from .tokens import PaintedLayer, Ranges, Vocabulary, painting_tokens, part_map,
 HOLD_SHARE, SPLIT_SEED = 0.15, 0
 KIND = "gen"
 
-Version = tuple[str, list[PaintedLayer], list[str]]    # (name, layers in painting order, condition names)
+Version = tuple[str, list[PaintedLayer], list[str]]  # (name, layers in painting order, condition names)
 
 
 @dataclass(frozen=True)
@@ -62,13 +62,16 @@ class CatSource:
 def read_cat_table(path: Path | str, paintings: Path | str) -> list[CatSource]:
     """A CSV with the columns name, cutout, photo, plan; each cat's painting is paintings/<name>."""
     with open(path, newline="") as f:
-        return [CatSource(r["name"], Path(r["cutout"]), Path(r["photo"]), Path(r["plan"]), Path(paintings) / r["name"])
-                for r in csv.DictReader(f)]
+        return [
+            CatSource(r["name"], Path(r["cutout"]), Path(r["photo"]), Path(r["plan"]), Path(paintings) / r["name"])
+            for r in csv.DictReader(f)
+        ]
 
 
 # ------------------------------------------------------------------ paintings
-def stored_layers(arrays: Mapping[str, np.ndarray], stage: int, prefix: str = ""
-                  ) -> list[tuple[int, int, StrokeParams, np.ndarray | None]]:
+def stored_layers(
+    arrays: Mapping[str, np.ndarray], stage: int, prefix: str = ""
+) -> list[tuple[int, int, StrokeParams, np.ndarray | None]]:
     """A stage's stored layers (stage, j, strokes, each stroke's eye side or None); `prefix`: a version's stage 2
     in an eye-versions file."""
     files = set(arrays.keys())
@@ -81,8 +84,9 @@ def stored_layers(arrays: Mapping[str, np.ndarray], stage: int, prefix: str = ""
     return out
 
 
-def version_layers(painting: Path, eyes: Mapping[str, np.ndarray] | None = None, version: str = ""
-                   ) -> list[PaintedLayer]:
+def version_layers(
+    painting: Path, eyes: Mapping[str, np.ndarray] | None = None, version: str = ""
+) -> list[PaintedLayer]:
     """Every layer of a painting in painting order, stage 2 split by eye (all of the left eye's layers, then the
     right's). eyes / version: take stage 2 from that version of an eye-versions file instead."""
     out: list[PaintedLayer] = []
@@ -135,9 +139,15 @@ def mirrored(versions: list[Version]) -> list[Version]:
     """Each painting flipped left to right, named "<version>~m"."""
     out = []
     for v, layers, cond in versions:
-        flip = [(st, j, StrokeParams(torch.stack([SIDE - p.xy[:, 0], p.xy[:, 1]], 1), p.lw, np.pi - p.angle,
-                                     p.colour, p.alpha), None if side is None else 1 - side)
-                for st, j, p, side in layers]
+        flip = [
+            (
+                st,
+                j,
+                StrokeParams(torch.stack([SIDE - p.xy[:, 0], p.xy[:, 1]], 1), p.lw, np.pi - p.angle, p.colour, p.alpha),
+                None if side is None else 1 - side,
+            )
+            for st, j, p, side in layers
+        ]
         at = next((i for i, x in enumerate(flip) if x[3] is not None), len(flip))
         rest = [x for x in flip if x[3] is None]
         eyes = [x for x in flip if x[3] == 0] + [x for x in flip if x[3] == 1]
@@ -151,9 +161,10 @@ def read_duplicate_pairs(path: Path | str, prefix: str = "afhq__") -> list[tuple
     return [(f"{prefix}{p['a']}", f"{prefix}{p['b']}") for p in json.loads(Path(path).read_text())["pairs"]]
 
 
-def split_cats(names: list[str], duplicates: Iterable[tuple[str, str]] = (), share: float = HOLD_SHARE,
-               seed: int = SPLIT_SEED) -> dict[str, str]:
-    """"held" or "train" per cat: groups of the same photo (joined through the duplicate pairs) are shuffled and
+def split_cats(
+    names: list[str], duplicates: Iterable[tuple[str, str]] = (), share: float = HOLD_SHARE, seed: int = SPLIT_SEED
+) -> dict[str, str]:
+    """ "held" or "train" per cat: groups of the same photo (joined through the duplicate pairs) are shuffled and
     held out until `share` of the cats are."""
     parent = {n: n for n in names}
 
@@ -162,6 +173,7 @@ def split_cats(names: list[str], duplicates: Iterable[tuple[str, str]] = (), sha
             parent[n] = parent[parent[n]]
             n = parent[n]
         return n
+
     for a, b in duplicates:
         if a in parent and b in parent:
             parent[find(a)] = find(b)
@@ -185,8 +197,13 @@ def read_split(path: Path | str) -> dict[str, str]:
 
 
 # ------------------------------------------------------------------ one cat
-def cat_versions(source: CatSource, coat: Mapping, eye_versions: Path | None = None,
-                 eye_targets: Mapping[str, np.ndarray] | None = None, mirror: bool = False) -> list[Version]:
+def cat_versions(
+    source: CatSource,
+    coat: Mapping,
+    eye_versions: Path | None = None,
+    eye_targets: Mapping[str, np.ndarray] | None = None,
+    mirror: bool = False,
+) -> list[Version]:
     """One cat's paintings with their condition names: A, its eye versions (eye_versions/<name>.json and .npz;
     eye_targets: the real eyes each colour is recoloured towards), and with `mirror` all of them flipped."""
     view = eye_view(load_inputs(source.cutout, source.photo, source.plan))
@@ -195,7 +212,7 @@ def cat_versions(source: CatSource, coat: Mapping, eye_versions: Path | None = N
     info_file = eye_versions / f"{source.name}.json" if eye_versions is not None else None
     if info_file is not None and info_file.exists():
         info = json.loads(info_file.read_text())["versions"]
-        if "A_cpu" in info:        # the original painted with the versions; its eye versions are comparable to it
+        if "A_cpu" in info:  # the original painted with the versions; its eye versions are comparable to it
             if eye_targets is None:
                 raise ValueError("eye versions need the eye colour targets")
             with np.load(eye_versions / f"{source.name}.npz") as arrays:
@@ -204,8 +221,9 @@ def cat_versions(source: CatSource, coat: Mapping, eye_versions: Path | None = N
                         continue
                     to = tuple(row["to"])
                     photo = recolour_eyes(view["photo"], view, eye_targets, to) if any(to) else view["photo"]
-                    versions.append((f"eye:{v}", version_layers(source.painting, arrays, v),
-                                     eye_names(view, photo) + own))
+                    versions.append(
+                        (f"eye:{v}", version_layers(source.painting, arrays, v), eye_names(view, photo) + own)
+                    )
     return versions + (mirrored(versions) if mirror else [])
 
 
@@ -226,11 +244,20 @@ def pad_rows(rows: list[np.ndarray], width: int, dtype: type) -> np.ndarray:
     return np.stack([np.pad(r, (0, width - len(r)), constant_values=-1).astype(dtype) for r in rows])
 
 
-def build(cats: list[CatSource], coat_labels: Mapping[str, Mapping], out: Path | str, vocab: Vocabulary,
-          split: Mapping[str, str] | None = None, duplicates: Iterable[tuple[str, str]] = (),
-          ranges: Ranges | None = None, eye_versions: Path | None = None,
-          eye_targets: Mapping[str, np.ndarray] | None = None, mirror: bool = False, limit: int = 0,
-          log: Callable[[dict], None] | None = None) -> dict:
+def build(
+    cats: list[CatSource],
+    coat_labels: Mapping[str, Mapping],
+    out: Path | str,
+    vocab: Vocabulary,
+    split: Mapping[str, str] | None = None,
+    duplicates: Iterable[tuple[str, str]] = (),
+    ranges: Ranges | None = None,
+    eye_versions: Path | None = None,
+    eye_targets: Mapping[str, np.ndarray] | None = None,
+    mirror: bool = False,
+    limit: int = 0,
+    log: Callable[[dict], None] | None = None,
+) -> dict:
     """Build out/data.npz and out/data.json from the painted cats (in name order; cats without a finished, finite
     painting are left out; `limit`: only the first ones). The vocabulary sets the format (`Vocabulary.build`):
     with part markers the strokes go in part order, with plan tokens the sketch plan comes first."""
@@ -247,7 +274,7 @@ def build(cats: list[CatSource], coat_labels: Mapping[str, Mapping], out: Path |
     toks, fields, cond, cat_id, group, vnames = [], [], [], [], [], []
     dropped = 0
     for ci, source in enumerate(painted):
-        parts = ({flip: part_map(face_points(source, flip)) for flip in (False, True)} if vocab.has_parts else None)
+        parts = {flip: part_map(face_points(source, flip)) for flip in (False, True)} if vocab.has_parts else None
         plan = read_plan(source.plan) if vocab.has_plan else None
         g = len(set(group))
         for v, layers, names_of in cat_versions(source, coat_labels[source.name], eye_versions, eye_targets, mirror):
@@ -265,22 +292,40 @@ def build(cats: list[CatSource], coat_labels: Mapping[str, Mapping], out: Path |
             log({"cat": source.name, "versions": len(toks)})
     width = max(len(t) for t in toks)
     out.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(out / "data.npz", tokens=pad_rows(toks, width, np.int32),
-                        fields=pad_rows(fields, width, np.int8), cond=np.array(cond, np.int32),
-                        cat_id=np.array(cat_id), group=np.array(group),
-                        kind=np.array([KIND] * len(toks)), versions=np.array(vnames), cats=np.array(names),
-                        split=np.array([split[c] for c in names]), ranges=ranges_to_array(ranges),
-                        vocab=np.array(vocab.size), specials=np.array(vocab.specials),
-                        field_names=np.array(vocab.field_names),
-                        field_sizes=np.array([vocab.field_sizes[f] for f in vocab.field_names]),
-                        palette_k=vocab.palette_k)
+    np.savez_compressed(
+        out / "data.npz",
+        tokens=pad_rows(toks, width, np.int32),
+        fields=pad_rows(fields, width, np.int8),
+        cond=np.array(cond, np.int32),
+        cat_id=np.array(cat_id),
+        group=np.array(group),
+        kind=np.array([KIND] * len(toks)),
+        versions=np.array(vnames),
+        cats=np.array(names),
+        split=np.array([split[c] for c in names]),
+        ranges=ranges_to_array(ranges),
+        vocab=np.array(vocab.size),
+        specials=np.array(vocab.specials),
+        field_names=np.array(vocab.field_names),
+        field_sizes=np.array([vocab.field_sizes[f] for f in vocab.field_names]),
+        palette_k=vocab.palette_k,
+    )
     lens = np.array([len(t) for t in toks])
-    summary = {"cats": len(names), "held": sum(split[c] == "held" for c in names), "paintings": len(toks),
-               "held_paintings": sum(split[names[c]] == "held" for c in cat_id),
-               "part_order": vocab.has_parts, "plan": vocab.has_plan, "palette": vocab.has_palette,
-               "eye_versions": eye_versions is not None, "mirror": mirror, "strokes_dropped": dropped,
-               "nan_canvas_cats_left_out": len(nan_cats),
-               "tokens_min_median_max": [int(lens.min()), int(np.median(lens)), int(lens.max())], "vocab": vocab.size}
+    summary = {
+        "cats": len(names),
+        "held": sum(split[c] == "held" for c in names),
+        "paintings": len(toks),
+        "held_paintings": sum(split[names[c]] == "held" for c in cat_id),
+        "part_order": vocab.has_parts,
+        "plan": vocab.has_plan,
+        "palette": vocab.has_palette,
+        "eye_versions": eye_versions is not None,
+        "mirror": mirror,
+        "strokes_dropped": dropped,
+        "nan_canvas_cats_left_out": len(nan_cats),
+        "tokens_min_median_max": [int(lens.min()), int(np.median(lens)), int(lens.max())],
+        "vocab": vocab.size,
+    }
     (out / "data.json").write_text(json.dumps(summary, indent=1))
     return summary
 

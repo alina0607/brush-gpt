@@ -43,11 +43,17 @@ def main() -> None:
     if a.review:
         kept = reviewed_for_eyes(a.review)
         cats = [c for c in cats if c.name in kept]
-    stats = build(cats, Path(a.out), split=read_split(a.split) if a.split else None,
-                  duplicates=read_duplicate_pairs(a.duplicates) if a.duplicates else (),
-                  eye_versions=Path(a.eye_versions) if a.eye_versions else None,
-                  eye_targets=eye_targets(a.real_eyes) if a.real_eyes else None, limit=a.limit, threads=a.threads,
-                  log=lambda row: print(json.dumps(row), flush=True))
+    stats = build(
+        cats,
+        Path(a.out),
+        split=read_split(a.split) if a.split else None,
+        duplicates=read_duplicate_pairs(a.duplicates) if a.duplicates else (),
+        eye_versions=Path(a.eye_versions) if a.eye_versions else None,
+        eye_targets=eye_targets(a.real_eyes) if a.real_eyes else None,
+        limit=a.limit,
+        threads=a.threads,
+        log=lambda row: print(json.dumps(row), flush=True),
+    )
     print(json.dumps(stats, indent=1))
 
 

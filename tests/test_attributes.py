@@ -32,14 +32,25 @@ def fake_targets() -> dict:
     """Real eyes of each colour (Lab), spread over lightness."""
     rng = np.random.default_rng(0)
     centre = {"blue": (-5, -25), "green": (-20, 15), "yellow": (2, 45), "orange": (20, 50), "copper": (25, 40)}
-    return {n: np.c_[rng.uniform(20, 80, 60), a + rng.normal(0, 3, 60), b + rng.normal(0, 3, 60)]
-            for n, (a, b) in centre.items()}
+    return {
+        n: np.c_[rng.uniform(20, 80, 60), a + rng.normal(0, 3, 60), b + rng.normal(0, 3, 60)]
+        for n, (a, b) in centre.items()
+    }
 
 
 # ------------------------------------------------------------------ unit tests
-@pytest.mark.parametrize("lab, name", [((50, 0, 0), "unclear"), ((15, 20, 30), "unclear"), ((50, -20, -20), "blue"),
-                                       ((50, -20, 10), "green"), ((60, 0, 30), "yellow"), ((60, 20, 30), "orange"),
-                                       ((40, 20, 30), "copper")])
+@pytest.mark.parametrize(
+    "lab, name",
+    [
+        ((50, 0, 0), "unclear"),
+        ((15, 20, 30), "unclear"),
+        ((50, -20, -20), "blue"),
+        ((50, -20, 10), "green"),
+        ((60, 0, 30), "yellow"),
+        ((60, 20, 30), "orange"),
+        ((40, 20, 30), "copper"),
+    ],
+)
 def test_eye_name(lab, name):
     assert eye_name(np.array(lab, float)) == name and name in EYE_COLOURS
 
@@ -79,8 +90,12 @@ def test_real_eye_targets():
 def test_coat_names_and_reading_right():
     row = {"base": {"label": "grey", "confident": True}, "pattern": {"label": "tabby", "confident": False}}
     assert coat_names(row) == ["grey", "unclear"]
-    assert read_right(["blue", "green", "grey", "tabby"], ["blue", "copper", "grey", "unclear"]) == [True, False,
-                                                                                                    True, None]
+    assert read_right(["blue", "green", "grey", "tabby"], ["blue", "copper", "grey", "unclear"]) == [
+        True,
+        False,
+        True,
+        None,
+    ]
 
 
 def test_painting_attributes_reads_eyes_and_coat(view):
@@ -136,6 +151,7 @@ def test_coat_reader_matches_the_reference(real):
     pytest.importorskip("transformers")
     pytest.importorskip("sklearn")
     from brushgpt.attributes import CoatReader
+
     CL = reference("coat_label")
     _, _, _, cats = real
     images = [np.asarray(ref["target"], np.float32) for ref, _ in cats] + [cats[0][1]["photo"]]

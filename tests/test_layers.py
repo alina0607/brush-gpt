@@ -49,7 +49,7 @@ def test_rope_keeps_lengths_and_depends_only_on_the_offset():
     q, k = torch.randn(1, 1, 1, 8), torch.randn(1, 1, 1, 8)
 
     def at(x, p):
-        return apply_rope(x, cos[p:p + 1], sin[p:p + 1])
+        return apply_rope(x, cos[p : p + 1], sin[p : p + 1])
 
     assert torch.allclose(at(q, 5).norm(), q.norm(), atol=1e-5)
     assert torch.allclose((at(q, 7) * at(k, 3)).sum(), (at(q, 14) * at(k, 10)).sum(), atol=1e-5)
@@ -63,7 +63,7 @@ def test_self_attention_cache_matches_a_full_causal_pass():
     full = attn(x, cos, sin, causal=True)
     cache = SelfAttentionCache(size=10)
     steps = [attn(x[:, :3], cos[:3], sin[:3], causal=True, cache=cache)]
-    steps += [attn(x[:, t:t + 1], cos[t:t + 1], sin[t:t + 1], causal=True, cache=cache) for t in range(3, 6)]
+    steps += [attn(x[:, t : t + 1], cos[t : t + 1], sin[t : t + 1], causal=True, cache=cache) for t in range(3, 6)]
     assert torch.allclose(torch.cat(steps, 1), full, atol=1e-6)
 
 
@@ -83,7 +83,7 @@ def test_gpt_cache_reproduces_the_full_forward():
     full, _ = model(idx)
     cache = model.empty_cache()
     parts = [model(idx[:, :5], cache=cache)[0]]
-    parts += [model(idx[:, t:t + 1], cache=cache, start_pos=t)[0] for t in range(5, 12)]
+    parts += [model(idx[:, t : t + 1], cache=cache, start_pos=t)[0] for t in range(5, 12)]
     assert torch.allclose(torch.cat(parts, 1), full, atol=1e-5)
 
 
@@ -140,8 +140,9 @@ def test_logits_loss_and_cache_match_the_reference():
     rc, mc = [{} for _ in ref.blocks], mine.empty_cache()
     assert torch.equal(ref(idx[:, :9], cache=rc)[0], mine(idx[:, :9], cache=mc)[0])
     for t in range(9, 16):
-        assert torch.equal(ref(idx[:, t:t + 1], cache=rc, start_pos=t)[0],
-                           mine(idx[:, t:t + 1], cache=mc, start_pos=t)[0])
+        assert torch.equal(
+            ref(idx[:, t : t + 1], cache=rc, start_pos=t)[0], mine(idx[:, t : t + 1], cache=mc, start_pos=t)[0]
+        )
 
 
 def test_reference_state_dict_loads_unchanged():
