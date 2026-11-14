@@ -4,22 +4,22 @@
 
 <table>
 <tr>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed0_cat32.gif" alt="Seed 0 sample #32: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 0 #32 · yellow/yellow eyes · grey tabby</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed0_cat44.gif" alt="Seed 0 sample #44: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 0 #44 · yellow/yellow eyes · grey tabby</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat01.gif" alt="Seed 3 sample #01: blue/blue eyes, cream pointed; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #01 · blue/blue eyes · cream pointed</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat05.gif" alt="Seed 3 sample #05: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #05 · green/green eyes · brown tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed0_cat32.gif" alt="Seed 0 sample #32: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 0 #32 · yellow/yellow eyes · grey tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed0_cat44.gif" alt="Seed 0 sample #44: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 0 #44 · yellow/yellow eyes · grey tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat01.gif" alt="Seed 3 sample #01: blue/blue eyes, cream pointed; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #01 · blue/blue eyes · cream pointed</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat05.gif" alt="Seed 3 sample #05: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #05 · green/green eyes · brown tabby</sub></td>
 </tr>
 <tr>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat08.gif" alt="Seed 3 sample #08: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #08 · yellow/yellow eyes · grey tabby</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat11.gif" alt="Seed 3 sample #11: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #11 · blue/green eyes · white tortie calico</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat23.gif" alt="Seed 3 sample #23: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #23 · blue/green eyes · white tortie calico</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat19.gif" alt="Seed 3 sample #19: blue/blue eyes, white solid; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #19 · blue/blue eyes · white solid</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat08.gif" alt="Seed 3 sample #08: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #08 · yellow/yellow eyes · grey tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat11.gif" alt="Seed 3 sample #11: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #11 · blue/green eyes · white tortie calico</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat23.gif" alt="Seed 3 sample #23: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #23 · blue/green eyes · white tortie calico</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat19.gif" alt="Seed 3 sample #19: blue/blue eyes, white solid; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #19 · blue/blue eyes · white solid</sub></td>
 </tr>
 <tr>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat31.gif" alt="Seed 3 sample #31: blue/blue eyes, white solid; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #31 · blue/blue eyes · white solid</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat29.gif" alt="Seed 3 sample #29: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #29 · green/green eyes · brown tabby</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat35.gif" alt="Seed 3 sample #35: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #35 · blue/green eyes · white tortie calico</sub></td>
-  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat41.gif" alt="Seed 3 sample #41: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #41 · green/green eyes · brown tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat31.gif" alt="Seed 3 sample #31: blue/blue eyes, white solid; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #31 · blue/blue eyes · white solid</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat29.gif" alt="Seed 3 sample #29: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #29 · green/green eyes · brown tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat35.gif" alt="Seed 3 sample #35: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #35 · blue/green eyes · white tortie calico</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat41.gif" alt="Seed 3 sample #41: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="176"><br><sub>Seed 3 #41 · green/green eyes · brown tabby</sub></td>
 </tr>
 </table>
 
