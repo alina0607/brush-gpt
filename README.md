@@ -2,6 +2,13 @@
 
 [![CI](https://github.com/alina0607/brush-gpt/actions/workflows/ci.yml/badge.svg)](https://github.com/alina0607/brush-gpt/actions/workflows/ci.yml)
 
+<div align="center">
+  <img src="docs/figures/brushgpt_part12000_E1_seed0_cat32.gif" alt="Brush GPT painting selected sample #32" width="320">
+  <img src="docs/figures/brushgpt_part12000_E1_seed0_cat44.gif" alt="Brush GPT painting selected sample #44" width="320">
+</div>
+
+*Brush GPT painting cats stroke by stroke (whole-face model, then the eye part model; asked: yellow eyes, grey tabby coat). Samples #32 and #44 were chosen by hand from 48 samples for this preview; the results below use one sample per cat, nothing picked.*
+
 > A transformer that paints cat portraits one brush stroke at a time. It is trained on 6,000+ paintings made by a
 > stroke-fitting "data painter" that turns cat photos into layered digital paintings, and it is conditioned on what
 > the cat should look like (coat colour, pattern, each eye's colour). Built from scratch in PyTorch.
