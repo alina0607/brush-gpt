@@ -2,12 +2,28 @@
 
 [![CI](https://github.com/alina0607/brush-gpt/actions/workflows/ci.yml/badge.svg)](https://github.com/alina0607/brush-gpt/actions/workflows/ci.yml)
 
-<div align="center">
-  <img src="docs/figures/brushgpt_part12000_E1_seed0_cat32.gif" alt="Brush GPT painting selected sample #32" width="320">
-  <img src="docs/figures/brushgpt_part12000_E1_seed0_cat44.gif" alt="Brush GPT painting selected sample #44" width="320">
-</div>
+<table>
+<tr>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed0_cat32.gif" alt="Seed 0 sample #32: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 0 #32 · yellow/yellow eyes · grey tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed0_cat44.gif" alt="Seed 0 sample #44: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 0 #44 · yellow/yellow eyes · grey tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat01.gif" alt="Seed 3 sample #01: blue/blue eyes, cream pointed; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #01 · blue/blue eyes · cream pointed</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat05.gif" alt="Seed 3 sample #05: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #05 · green/green eyes · brown tabby</sub></td>
+</tr>
+<tr>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat08.gif" alt="Seed 3 sample #08: yellow/yellow eyes, grey tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #08 · yellow/yellow eyes · grey tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat11.gif" alt="Seed 3 sample #11: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #11 · blue/green eyes · white tortie calico</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat23.gif" alt="Seed 3 sample #23: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #23 · blue/green eyes · white tortie calico</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat19.gif" alt="Seed 3 sample #19: blue/blue eyes, white solid; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #19 · blue/blue eyes · white solid</sub></td>
+</tr>
+<tr>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat31.gif" alt="Seed 3 sample #31: blue/blue eyes, white solid; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #31 · blue/blue eyes · white solid</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat29.gif" alt="Seed 3 sample #29: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #29 · green/green eyes · brown tabby</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat35.gif" alt="Seed 3 sample #35: blue/green eyes, white tortie calico; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #35 · blue/green eyes · white tortie calico</sub></td>
+  <td align="center"><img src="docs/figures/brushgpt_part12000_E1_seed3_cat41.gif" alt="Seed 3 sample #41: green/green eyes, brown tabby; every generated stroke shown from the first stroke" width="192"><br><sub>Seed 3 #41 · green/green eyes · brown tabby</sub></td>
+</tr>
+</table>
 
-*Brush GPT painting cats stroke by stroke (whole-face model, then the eye part model; asked: yellow eyes, grey tabby coat). Every generated stroke, including the eye strokes, is replayed one at a time. Samples #32 and #44 were chosen by hand from 48 samples for this preview; the results below use one sample per cat, nothing picked.*
+*Each GIF starts with the whole-face model’s first brush stroke and replays every whole-face stroke in order, followed by the eye part model’s strokes one at a time. The Seed 0 and Seed 3 cover cats were chosen by hand from their respective 48-cat batches; the Results below still use one sample per cat, nothing picked.*
 
 > A transformer that paints cat portraits one brush stroke at a time. It is trained on 6,000+ paintings made by a
 > stroke-fitting "data painter" that turns cat photos into layered digital paintings, and it is conditioned on what
