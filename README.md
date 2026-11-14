@@ -7,7 +7,7 @@
   <img src="docs/figures/brushgpt_part12000_E1_seed0_cat44.gif" alt="Brush GPT painting selected sample #44" width="320">
 </div>
 
-*Brush GPT painting cats stroke by stroke (whole-face model, then the eye part model; asked: yellow eyes, grey tabby coat). Samples #32 and #44 were chosen by hand from 48 samples for this preview; the results below use one sample per cat, nothing picked.*
+*Brush GPT painting cats stroke by stroke (whole-face model, then the eye part model; asked: yellow eyes, grey tabby coat). Every generated stroke, including the eye strokes, is replayed one at a time. Samples #32 and #44 were chosen by hand from 48 samples for this preview; the results below use one sample per cat, nothing picked.*
 
 > A transformer that paints cat portraits one brush stroke at a time. It is trained on 6,000+ paintings made by a
 > stroke-fitting "data painter" that turns cat photos into layered digital paintings, and it is conditioned on what
@@ -34,8 +34,6 @@ eyes, the fur and the whiskers, each stroke a token with a position, size, angle
 All numbers are on **held-out cats** (never seen in training), one sample per cat, nothing picked. A painting
 "reads right" when an independent colour reader, which measures each painted iris and coat in CIELAB and names it,
 agrees with the colour that was asked for.
-
-![Painter, whole-face model, and whole-face model plus eye model, on held-out cats](docs/figures/model_comparison_3cats.png)
 
 **Whole-face model** (32 held cats; guidance strength g):
 
