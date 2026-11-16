@@ -23,7 +23,7 @@
 </tr>
 </table>
 
-*The corrected stroke-by-stroke replay is currently live for Seed 0 #32 and #44 and Seed 3 #1, #5, and #8. The other gallery GIFs are being rebuilt with the same full-face token-prefix replay and eye-stage layer order. The Seed 0 and Seed 3 cover cats were chosen by hand from their respective 48-cat batches; the Results below still use one sample per cat, nothing picked.*
+*The corrected stroke-by-stroke replay is currently live for Seed 0 #32 and #44 and Seed 3 #1, #5, #8, #11, #19, and #23. The other gallery GIFs are being rebuilt with the same full-face token-prefix replay and eye-stage layer order. The Seed 0 and Seed 3 cover cats were chosen by hand from their respective 48-cat batches; the Results below still use one sample per cat, nothing picked.*
 
 > A transformer that paints cat portraits one brush stroke at a time. It is trained on 6,000+ paintings made by a
 > stroke-fitting "data painter" that turns cat photos into layered digital paintings, and it is conditioned on what
